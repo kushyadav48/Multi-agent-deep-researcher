@@ -1,0 +1,14 @@
+# Core AI Framework
+crewai
+
+# MCP Server
+fastmcp
+
+# Environment Variables
+python-dotenv
+
+# Search API
+linkup-sdk
+
+# Ollama Integration
+ollama
