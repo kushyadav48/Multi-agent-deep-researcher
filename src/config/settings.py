@@ -5,5 +5,5 @@ load_dotenv()
 
 LINKUP_API_KEY = os.getenv("LINKUP_API_KEY")
 
-OLLAMA_MODEL = "deepseek-r1:7b"
+OLLAMA_MODEL = "deepseek-r1:1.5b"
 OLLAMA_BASE_URL = "http://localhost:11434"
