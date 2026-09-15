@@ -1,18 +1,12 @@
-import os
-
-from dotenv import load_dotenv
-from linkup import LinkupClient
 from crewai.tools import BaseTool
 from pydantic import BaseModel, Field
-
-
-load_dotenv()
+from ddgs import DDGS
 
 
 class LinkUpSearchInput(BaseModel):
     query: str = Field(
         ...,
-        description="The search query to send to LinkUp."
+        description="The search query to send to the web search engine."
     )
     depth: str = Field(
         default="standard",
@@ -20,14 +14,14 @@ class LinkUpSearchInput(BaseModel):
     )
     output_type: str = Field(
         default="searchResults",
-        description="Output type: searchResults, sourcedAnswer, or structured."
+        description="Output format."
     )
 
 
 class LinkUpSearchTool(BaseTool):
-    name: str = "linkup_search"
+    name: str = "web_search"
     description: str = (
-        "Search the web using LinkUp and return relevant web results."
+        "Search the web using DuckDuckGo and return relevant search results."
     )
     args_schema: type[BaseModel] = LinkUpSearchInput
 
@@ -38,19 +32,28 @@ class LinkUpSearchTool(BaseTool):
         output_type: str = "searchResults",
     ) -> str:
 
-        api_key = os.getenv("LINKUP_API_KEY")
+        max_results = 5 if depth == "standard" else 10
 
-        if not api_key:
-            raise ValueError(
-                "LINKUP_API_KEY is not set in the environment."
-            )
-
-        client = LinkupClient(api_key=api_key)
-
-        response = client.search(
-            query=query,
-            depth=depth,
-            output_type=output_type,
+        results = DDGS().text(
+            query,
+            max_results=max_results,
         )
 
-        return str(response)
+        if not results:
+            return "No search results were found."
+
+        formatted_results = []
+
+        for i, result in enumerate(results, start=1):
+            title = result.get("title", "No title")
+            url = result.get("href", "No URL")
+            body = result.get("body", "No description")
+
+            formatted_results.append(
+                f"Source {i}:\n"
+                f"Title: {title}\n"
+                f"URL: {url}\n"
+                f"Description: {body}\n"
+            )
+
+        return "\n".join(formatted_results)
