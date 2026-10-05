@@ -6,3 +6,8 @@ python-dotenv==1.2.3
 pydantic==2.12.5
 anyio==4.15.1
 streamlit==1.65.0
+
+# Phase 4 local RAG (existing Chroma/Ollama versions retained).
+chromadb==1.1.1
+pypdf==6.19.0
+ollama==0.6.2

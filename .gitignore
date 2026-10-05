@@ -35,6 +35,7 @@ validation_logs/
 *.bak
 
 # Downloaded model files
+data/chroma/
 models/
 .ollama/
 *.gguf

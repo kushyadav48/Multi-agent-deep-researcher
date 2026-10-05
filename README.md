@@ -55,7 +55,7 @@ The MCP server runs research in an AnyIO worker thread and serializes calls beca
 - Streamlit for the UI
 - AnyIO, Pydantic, and python-dotenv for runtime support
 
-`requirements.txt` pins the direct dependencies to the installed versions used for base-project validation. FastMCP comes from `mcp.server.fastmcp`; the separate `fastmcp` package is not required. CrewAI supplies the model client, so the separate Python `ollama` package is not required either.
+`requirements.txt` pins the direct dependencies used for validation. FastMCP comes from `mcp.server.fastmcp`; the separate `fastmcp` package is not required. CrewAI supplies the research model client. The Python `ollama` client is used separately for Phase 4 embeddings.
 
 ## Setup (Windows PowerShell)
 
@@ -123,4 +123,57 @@ README.md         Setup and authoritative architecture documentation
 
 The base workflow follows [the reference project](https://github.com/patchy631/ai-engineering-hub/tree/main/Multi-Agent-deep-researcher-mcp-windows-linux). This implementation intentionally uses DDGS instead of LinkUp and local Qwen2.5 3B instead of the reference's Ollama DeepSeek R1 7B model. It also retains the worker-thread and stdout/event-flush handling needed for the local Windows/CrewAI MCP setup. No search API key is required.
 
-RAG, semantic caching, model routing, metrics, dashboards, and benchmarking extensions are outside this base project.
+Semantic caching, model routing, metrics, dashboards, and benchmarking extensions remain future work.
+
+## RAG Foundation (Phase 4)
+
+The standalone `rag/` package implements local PDF/TXT/Markdown ingestion, deterministic character chunking, Ollama embeddings, persistent embedded Chroma storage, and similarity retrieval with source/page metadata. It does not change the three-agent researcher: **RAG is not yet integrated into CrewAI or Streamlit**. Document upload UI, semantic cache, and model router are not implemented.
+
+Start Ollama and install only the embedding model needed for this foundation:
+
+```powershell
+ollama pull qwen3-embedding:0.6b
+```
+
+Use the service from Python:
+
+```python
+from rag.service import RAGService
+
+rag = RAGService()
+processed_chunks = rag.ingest_file("paper.pdf")  # also .txt and .md
+for result in rag.retrieve("What does this document say about MCP?", top_k=5):
+    print(result.source, result.page, result.chunk_index, result.distance)
+    print(result.text)
+```
+
+Defaults: 1,000-character chunks with 200-character overlap, `qwen3-embedding:0.6b` at `http://localhost:11434`, Git-ignored `data/chroma/` (relative to the working directory), and collection `deep_researcher_documents`. PDF pages are numbered from 1 and chunk indices from 0; text files have no page number. Distances use cosine distance; lower is closer. Text/Markdown must be UTF-8; PDFs must contain extractable text. There is no OCR or password-input support.
+
+The `EmbeddingProvider` protocol exposes `embed_text` and `embed_texts` for reuse independently of RAG. Configure it, storage, and chunking explicitly when needed:
+
+```python
+from rag.chunking import TextChunker
+from rag.embeddings import OllamaEmbeddingProvider
+from rag.vector_store import ChromaVectorStore
+
+rag = RAGService(
+    OllamaEmbeddingProvider(),
+    ChromaVectorStore("data/chroma"),
+    TextChunker(chunk_size=1000, overlap=200),
+)
+```
+
+Stable IDs and upserts prevent duplicate chunks when the unchanged file is ingested repeatedly at the same resolved path with the same chunking settings. Changed/moved files or changed chunk settings can leave older records; automatic replacement and corpus versioning are deferred. Use a separate collection for a different embedding model. `rag.vector_store.clear()` removes this collection's records when a development reset is needed. Ingestion is batched and is not an atomic transaction; errors propagate, and retrying unchanged input safely upserts completed batches. Metadata supports immutable string-keyed scalar values.
+
+Validate without Ollama using deterministic fake embeddings and temporary Chroma directories:
+
+```powershell
+python -m unittest discover -s tests/rag -t . -v
+python -m unittest discover -s tests -t . -v
+```
+
+The opt-in live smoke test checks repeated embedding dimensions and verifies that an MCP document ranks above a photosynthesis document. It reports timings and uses a temporary vector store, cleaned after its child process exits:
+
+```powershell
+python -m tests.rag.smoke_local
+```
