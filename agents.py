@@ -16,6 +16,7 @@ def get_llm_client():
     return LLM(
         model="ollama/qwen2.5:3b",
         base_url="http://localhost:11434",
+        max_tokens=2048,
     )
 
 
@@ -90,11 +91,10 @@ def create_research_crew(query: str):
         ),
         backstory=(
             "An expert at formulating search queries and retrieving "
-            "relevant information. Passes the results to the "
-            "'Research Analyst' only."
+            "relevant information with accurate source links."
         ),
         verbose=True,
-        allow_delegation=True,
+        allow_delegation=False,
         tools=[search_tool],
         llm=client,
     )
@@ -107,12 +107,10 @@ def create_research_crew(query: str):
         ),
         backstory=(
             "An expert at analyzing information, identifying patterns, "
-            "and extracting key insights. If required, can delegate "
-            "fact checking to the 'Web Searcher' only. Passes the final "
-            "results to the 'Technical Writer' only."
+            "and extracting key insights from the provided search results."
         ),
         verbose=True,
-        allow_delegation=True,
+        allow_delegation=False,
         llm=client,
     )
 
@@ -133,7 +131,10 @@ def create_research_crew(query: str):
 
     search_task = Task(
         description=(
-            f"Search for comprehensive information about: {query}."
+            f"Search the web using DuckDuckGo Search for: {query}. "
+            "Return the retrieved titles, exact source URLs, and relevant "
+            "descriptions. Do not invent results or URLs. If search fails "
+            "or returns no results, report that limitation."
         ),
         agent=web_searcher,
         expected_output=(
@@ -144,28 +145,36 @@ def create_research_crew(query: str):
 
     analysis_task = Task(
         description=(
-            "Analyze the raw search results, identify key information, "
-            "verify facts and prepare a structured analysis."
+            f"Analyze the provided search results to answer: {query}. "
+            "Use only information supported by those results. Preserve "
+            "source URLs exactly and distinguish missing information from "
+            "supported facts. Do not invent examples, claims, or citations. "
+            "Keep the analysis focused and within 350 words."
         ),
         agent=research_analyst,
         expected_output=(
-            "A structured analysis of the information with verified facts "
-            "and key insights, along with source links."
+            "A concise, source-grounded analysis answering the original "
+            "question, with exact retrieved source links and any limitations."
         ),
         context=[search_task],
     )
 
     writing_task = Task(
         description=(
-            "Create a comprehensive, well-organized response "
-            "based on the research analysis."
+            f"Answer the original question: {query}. "
+            "Use the provided search results and analysis to write a "
+            "focused markdown answer within 500 words. Cite only exact "
+            "URLs present in the search results. Do not invent examples "
+            "or unsupported claims. State any search limitations clearly. "
+            "Avoid repetition, unrelated topics, and follow-up questions; "
+            "finish once the question is answered."
         ),
         agent=technical_writer,
         expected_output=(
-            "A clear, comprehensive response that directly answers "
-            "the query with proper citations/source links (urls)."
+            "A concise markdown answer to the original question, grounded "
+            "in the retrieved sources, with accurate citations and no repetition."
         ),
-        context=[analysis_task],
+        context=[search_task, analysis_task],
     )
 
     crew = Crew(
