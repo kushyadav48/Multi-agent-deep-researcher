@@ -12,3 +12,6 @@ linkup-sdk
 
 # Ollama Integration
 ollama
+
+# Streamlit Frontend
+streamlit
