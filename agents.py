@@ -14,7 +14,7 @@ load_dotenv()
 def get_llm_client():
     """Initialize and return the LLM client."""
     return LLM(
-        model="ollama/deepseek-r1:1.5b",
+        model="ollama/qwen2.5:3b",
         base_url="http://localhost:11434",
     )
 
