@@ -11,6 +11,37 @@ __pycache__/
 
 # Environment variables
 .env
+.env.*
+!.env.example
+
+# Local credentials and Streamlit runtime state
+.streamlit/secrets.toml
+.streamlit/cache/
+.streamlit/runtime/
+.aws/
+credentials*.json
+*.pem
+*.key
+
+# Local validation and temporary files
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+.coverage.*
+validation_logs/
+*.tmp
+*.bak
+
+# Downloaded model files
+models/
+.ollama/
+*.gguf
+*.safetensors
+*.onnx
+*.pt
+*.pth
 
 # IDE
 .vscode/

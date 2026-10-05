@@ -1,17 +1,8 @@
-# Core AI Framework
-crewai
-
-# MCP Server
-fastmcp
-
-# Environment Variables
-python-dotenv
-
-# Search API
-linkup-sdk
-
-# Ollama Integration
-ollama
-
-# Streamlit Frontend
-streamlit
+# Validated installed versions; no package upgrades in Phase 3.
+crewai==1.15.21
+mcp==1.28.1
+ddgs==9.16.0
+python-dotenv==1.2.3
+pydantic==2.12.5
+anyio==4.15.1
+streamlit==1.65.0
