@@ -33,6 +33,17 @@ htmlcov/
 validation_logs/
 *.tmp
 *.bak
+research_upload_*/
+
+# Runtime SQLite files, including journals outside the default data directories
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
 
 # Downloaded model files
 data/chroma/
