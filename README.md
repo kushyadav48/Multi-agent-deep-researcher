@@ -3,8 +3,8 @@
 Research a question using three sequential CrewAI agents:
 
 1. **Web Searcher** uses DDGS for live web research and collects titles, URLs, and descriptions.
-2. **Research Analyst** synthesizes the retrieved evidence and identifies missing information.
-3. **Technical Writer** produces a Markdown answer with source links.
+2. **Research Analyst** synthesizes web results and relevant local document evidence, preserving attribution and source conflicts.
+3. **Technical Writer** produces a Markdown answer with web URLs and document citations.
 
 The project has a Streamlit interface and a separate Model Context Protocol (MCP) stdio server. Both call the same research implementation in `agents.py`.
 
@@ -15,18 +15,20 @@ Streamlit app (app.py)
       |
       v
 agents.run_research(query)
-      |
-      v
-Web Searcher + DDGS
-      |
-      v
-Research Analyst
-      |
-      v
-Technical Writer
-      |
-      v
-Final answer
+      +-------------------------+
+      |                         |
+      v                         v
+Local RAG retrieval      Web Searcher + DDGS
+      |                         |
+      +----------+--------------+
+                 v
+         Research Analyst
+                 |
+                 v
+         Technical Writer
+                 |
+                 v
+           Final answer
 ```
 
 MCP is a separate interface, not an intermediate step for Streamlit:
@@ -41,7 +43,7 @@ server.py: crew_research(query)
 agents.run_research(query)
 ```
 
-CrewAI runs the three tasks sequentially. The analyst receives search-task context; the writer receives both search and analysis context. Prompts require exact retrieved URLs, supported claims, and explicit search limitations. The model has a 2,048-token output limit; analysis and writing prompts request at most 350 and 500 words respectively. These prompts do not guarantee factual accuracy or strict word counts; review sources before relying on an answer.
+CrewAI runs exactly three tasks sequentially. RAG is infrastructure, not another agent or task. Retrieval runs before kickoff; the analyst receives bounded local evidence alongside search-task context. The writer receives search and analysis context plus the same bounded local evidence to verify claims and copy exact document citations. Prompts require supported claims, explicit limitations, and source conflicts. The model has a 2,048-token output limit; analysis and writing prompts request at most 350 and 500 words respectively. These prompts do not guarantee factual accuracy or strict word counts; review sources before relying on an answer.
 
 The MCP server runs research in an AnyIO worker thread and serializes calls because stdout redirection is process-wide. CrewAI output goes to stderr, and pending CrewAI event handlers are flushed before stdout is restored to keep the stdio protocol clean.
 
@@ -54,8 +56,9 @@ The MCP server runs research in an AnyIO worker thread and serializes calls beca
 - MCP Python SDK's FastMCP for the stdio server
 - Streamlit for the UI
 - AnyIO, Pydantic, and python-dotenv for runtime support
+- Qwen3 embeddings (`qwen3-embedding:0.6b`), embedded ChromaDB, and pypdf for local evidence
 
-`requirements.txt` pins the direct dependencies used for validation. FastMCP comes from `mcp.server.fastmcp`; the separate `fastmcp` package is not required. CrewAI supplies the research model client. The Python `ollama` client is used separately for Phase 4 embeddings.
+`requirements.txt` pins the direct dependencies used for validation. FastMCP comes from `mcp.server.fastmcp`; the separate `fastmcp` package is not required. CrewAI supplies the research model client. The Python `ollama` client handles local embeddings.
 
 ## Setup (Windows PowerShell)
 
@@ -125,11 +128,13 @@ The base workflow follows [the reference project](https://github.com/patchy631/a
 
 Semantic caching, model routing, metrics, dashboards, and benchmarking extensions remain future work.
 
-## RAG Foundation (Phase 4)
+## Integrated local knowledge base (Phase 5)
 
-The standalone `rag/` package implements local PDF/TXT/Markdown ingestion, deterministic character chunking, Ollama embeddings, persistent embedded Chroma storage, and similarity retrieval with source/page metadata. It does not change the three-agent researcher: **RAG is not yet integrated into CrewAI or Streamlit**. Document upload UI, semantic cache, and model router are not implemented.
+The `rag/` package supports local PDF/TXT/Markdown ingestion, deterministic character chunking, Ollama embeddings, persistent embedded Chroma storage, and retrieval with source/page metadata. It is integrated into the canonical researcher and Streamlit. MCP's existing `crew_research` tool automatically uses the same persisted corpus; no ingestion MCP tool is added.
 
-Start Ollama and install only the embedding model needed for this foundation:
+In Streamlit's **Knowledge Base** sidebar, choose one or more PDF, TXT, or MD files, then click **Add to Knowledge Base**. Choosing files or rerunning the app does not ingest them. Each upload is read from a temporary file that is removed on success or failure; only embedded chunks and metadata persist. **Stored chunks** displays the corpus size. **Use local knowledge base** defaults to enabled; disabling it skips research-time RAG construction, embedding, and retrieval. Corpus status still reads Chroma without embedding, and explicit ingestion remains available.
+
+Start Ollama and install the embedding model in addition to the research model:
 
 ```powershell
 ollama pull qwen3-embedding:0.6b
@@ -147,7 +152,13 @@ for result in rag.retrieve("What does this document say about MCP?", top_k=5):
     print(result.text)
 ```
 
-Defaults: 1,000-character chunks with 200-character overlap, `qwen3-embedding:0.6b` at `http://localhost:11434`, Git-ignored `data/chroma/` (relative to the working directory), and collection `deep_researcher_documents`. PDF pages are numbered from 1 and chunk indices from 0; text files have no page number. Distances use cosine distance; lower is closer. Text/Markdown must be UTF-8; PDFs must contain extractable text. There is no OCR or password-input support.
+Defaults: 1,000-character chunks with 200-character overlap, `qwen3-embedding:0.6b` at `http://localhost:11434`, Git-ignored `data/chroma/`, and collection `deep_researcher_documents`. The shared application service anchors storage to the project directory, independent of the launch directory; standalone `RAGService()` retains its working-directory-relative default. PDF pages are numbered from 1 and chunk indices from 0; text files have no page number. Text/Markdown must be UTF-8; PDFs must contain extractable text. There is no OCR or password-input support.
+
+`run_research(query)` remains valid. Optional keyword arguments are `use_rag=True`, `rag_service=None`, `rag_top_k=4`, and `rag_max_distance=0.6`. Service construction is lazy and does not request embeddings. Empty corpora skip query embedding entirely. The researcher retrieves at most four chunks by default and keeps only finite cosine distances at or below the configurable threshold. Cosine distance is `1 - cosine_similarity`; `0.6` requires similarity of at least `0.4`. This is a conservative initial heuristic, not a calibrated relevance guarantee or measured quality improvement. Unknown distances are excluded.
+
+Evidence is rendered deterministically as `LOCAL DOCUMENT EVIDENCE` with numbered blocks containing source filename, page (or `N/A`), chunk index, citation, and content. Each content block is capped at 1,000 characters, and the total local context at 6,000 characters. Embeddings and internal database structures are never included. The analyst synthesizes it with web evidence; the writer preserves citations such as `[Document: protocol_notes.pdf, p. 3]` or `[Document: notes.md]`. Missing pages are omitted, and documents are not represented as web URLs.
+
+If RAG is disabled, empty, or has no relevant chunks, research uses the web path without local evidence. If RAG fails, a warning is logged to stderr and an explicit web-only fallback notice is appended to the returned answer. No retrieval is fabricated; web research remains available. Research failures still use the existing `Error:` response convention.
 
 The `EmbeddingProvider` protocol exposes `embed_text` and `embed_texts` for reuse independently of RAG. Configure it, storage, and chunking explicitly when needed:
 
@@ -165,11 +176,22 @@ rag = RAGService(
 
 Stable IDs and upserts prevent duplicate chunks when the unchanged file is ingested repeatedly at the same resolved path with the same chunking settings. Changed/moved files or changed chunk settings can leave older records; automatic replacement and corpus versioning are deferred. Use a separate collection for a different embedding model. `rag.vector_store.clear()` removes this collection's records when a development reset is needed. Ingestion is batched and is not an atomic transaction; errors propagate, and retrying unchanged input safely upserts completed batches. Metadata supports immutable string-keyed scalar values.
 
+Temporary uploads pass their filename through `ingest_file(path, source=filename)` so reuploading unchanged content from a new temporary directory does not duplicate it. Uploads with the same filename share source identity; changed contents can leave older chunks. A document-management/versioning UI is not implemented.
+
+Semantic cache, model router, observability dashboard, and evaluation benchmark remain unimplemented. No dependencies were added for Phase 5.
+
 Validate without Ollama using deterministic fake embeddings and temporary Chroma directories:
 
 ```powershell
 python -m unittest discover -s tests/rag -t . -v
 python -m unittest discover -s tests -t . -v
+```
+
+The Phase 5 opt-in smoke uses a temporary corpus and real local embeddings, DDGS, and all three research agents. It checks a unique document fact and its final citation and reports embedding, retrieval, context, and end-to-end timings. Normal unit tests use fakes and mocked research completion, requiring no live Ollama.
+
+```powershell
+python -m tests.smoke_phase5
+python -m tests.smoke_interfaces  # headless Streamlit HTTP and MCP stdio checks
 ```
 
 The opt-in live smoke test checks repeated embedding dimensions and verifies that an MCP document ranks above a photosynthesis document. It reports timings and uses a temporary vector store, cleaned after its child process exits:

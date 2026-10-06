@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+from unittest.mock import Mock
 from pathlib import Path
 
 from rag.chunking import TextChunker
@@ -43,3 +44,20 @@ class ServiceTests(unittest.TestCase):
                 self.service.retrieve(query)
         with self.assertRaises(ValueError):
             self.service.retrieve("protocol", 0)
+
+    def test_empty_corpus_does_not_embed(self):
+        provider = Mock()
+        service = RAGService(provider, self.store)
+        self.assertEqual(service.count(), 0)
+        self.assertEqual(service.retrieve("protocol"), [])
+        provider.embed_text.assert_not_called()
+        provider.embed_texts.assert_not_called()
+
+    def test_temporary_upload_sources_remain_stable(self):
+        for directory in ("upload_one", "upload_two"):
+            path = self.root / directory / "notes.md"
+            path.parent.mkdir()
+            path.write_text("Models connect to tools using a protocol.", encoding="utf-8")
+            self.service.ingest_file(path, source="notes.md")
+        self.assertEqual(self.service.count(), 1)
+        self.assertEqual(self.service.retrieve("protocol", 1)[0].source, "notes.md")

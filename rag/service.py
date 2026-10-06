@@ -1,6 +1,7 @@
 """Document ingestion and similarity retrieval, without UI or agent coupling."""
 
 from pathlib import Path
+from dataclasses import replace
 
 from rag.chunking import TextChunker
 from rag.embeddings import EmbeddingProvider, OllamaEmbeddingProvider
@@ -20,9 +21,18 @@ class RAGService:
         self.vector_store = vector_store if vector_store is not None else ChromaVectorStore()
         self.chunker = chunker if chunker is not None else TextChunker()
 
-    def ingest_file(self, path: str | Path) -> int:
-        """Upsert deterministic chunks and return the number processed."""
-        chunks = self.chunker.chunk(load_document(path))
+    def count(self) -> int:
+        """Return stored chunks without contacting the embedding model."""
+        return self.vector_store.count()
+
+    def ingest_file(self, path: str | Path, *, source: str | None = None) -> int:
+        """Upsert chunks; optional stable source supports temporary uploads."""
+        document = load_document(path)
+        if source is not None:
+            if not isinstance(source, str) or not source.strip():
+                raise ValueError("source must be non-empty text")
+            document = replace(document, source=source)
+        chunks = self.chunker.chunk(document)
         if not chunks:
             raise DocumentLoadError(f"Document produced no non-empty chunks: {path}")
         # Bound local model request size even for longer PDFs.
@@ -36,4 +46,6 @@ class RAGService:
         if not isinstance(query, str) or not query.strip():
             raise ValueError("Retrieval query must be non-empty text")
         validate_top_k(top_k)
+        if self.count() == 0:
+            return []
         return self.vector_store.search(self.embedding_provider.embed_text(query), top_k)
