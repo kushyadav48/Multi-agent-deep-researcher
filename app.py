@@ -6,6 +6,8 @@ from tempfile import TemporaryDirectory
 
 from agents import run_research_detailed
 from rag.context import get_default_rag_service, source_name
+from ui.analytics import render_analytics
+from ui.research_console import render_research_console
 
 
 def knowledge_base_controls():
@@ -20,8 +22,8 @@ def knowledge_base_controls():
         add = st.button("Add to Knowledge Base", key="add_documents")
         try:
             service = get_default_rag_service()
-        except Exception as error:
-            st.warning(f"Knowledge base unavailable: {error}")
+        except Exception:
+            st.warning("Knowledge base unavailable. Check local storage and try again.")
             return use_rag
         if add:
             if not uploads:
@@ -37,28 +39,23 @@ def knowledge_base_controls():
                         with st.spinner(f"Adding {name}..."):
                             count = service.ingest_file(path, source=name)
                     st.success(f"{name}: processed {count} chunks.")
-                except Exception as error:
-                    st.error(f"Could not add {name}: {error}")
+                except Exception:
+                    st.error(f"Could not add {name}. Check the file and local embedding service.")
         try:
             st.caption(f"Stored chunks: {service.count()}")
-        except Exception as error:
-            st.warning(f"Could not read corpus status: {error}")
+        except Exception:
+            st.warning("Could not read corpus status. Check local storage.")
     return use_rag
 
 
 def main():
     st.set_page_config(
-        page_title="Multi-Agent Deep Researcher",
-        page_icon="🔎",
-        layout="centered",
+        page_title="Research Execution Console",
+        page_icon=":material/manage_search:",
+        layout="wide",
     )
-    st.title("🔎 Multi-Agent Deep Researcher")
-    st.write(
-        "Multiple AI agents search the web with DuckDuckGo, analyze the "
-        "information alongside relevant local documents, and synthesize a "
-        "research answer with sources."
-    )
-    st.caption("Local model inference may take some time.")
+    st.title("Research Execution Console")
+    st.caption("Ask a question, inspect the evidence and agent deliverables, and review operational history.")
     use_rag = knowledge_base_controls()
     use_cache = st.sidebar.toggle("Use semantic cache", value=True, key="use_cache")
     model_route = st.sidebar.selectbox(
@@ -74,45 +71,56 @@ def main():
         st.session_state.research_result = None
     if "research_execution" not in st.session_state:
         st.session_state.research_execution = None
+    st.session_state.setdefault("research_error", None)
 
-    with st.form("research_form"):
-        query = st.text_area(
-            "Research query",
-            placeholder="What is the Model Context Protocol (MCP)?",
-            height=150,
-            key="research_query",
-        )
-        submitted = st.form_submit_button("Research", type="primary")
-
-    if submitted:
-        query = query.strip()
-        if not query:
-            st.warning("Please enter a research question before starting.")
-        else:
-            st.session_state.research_result = None
-            st.session_state.research_execution = None
-            error_message = (
-                "Research could not be completed. Check that Ollama is running "
-                "and your internet connection is available, then try again."
+    research_tab, analytics_tab = st.tabs(
+        ["Research", "Analytics"], key="console_view", on_change="rerun",
+    )
+    # Rendering either view never executes research. Only form submission does.
+    # Keep both tab bodies rendered so input widget state survives navigation.
+    with research_tab:
+        with st.form("research_form", border=True):
+            query = st.text_area(
+                "Research query",
+                placeholder="What is the Model Context Protocol (MCP)?",
+                height=150,
+                key="research_query",
             )
-            try:
-                with st.spinner("Researching with multiple agents..."):
-                    execution = run_research_detailed(query, use_rag=use_rag, use_cache=use_cache,
-                                                      model_route=model_route.lower())
-                st.session_state.research_execution = execution
-                result = execution.final_answer
-                # The canonical backend can also return errors as strings.
-                if result.startswith("Error:"):
-                    st.error(error_message)
-                else:
-                    st.session_state.research_result = result
-            except Exception:
-                st.error(error_message)
+            st.caption("Local inference may take some time. Research runs only when you select Research.")
+            submitted = st.form_submit_button("Research", type="primary")
 
-    if st.session_state.research_result is not None:
-        st.divider()
-        st.subheader("Research Result")
-        st.markdown(st.session_state.research_result)
+        if submitted:
+            query = query.strip()
+            if not query:
+                st.warning("Please enter a research question before starting.")
+            else:
+                st.session_state.research_result = None
+                st.session_state.research_execution = None
+                st.session_state.research_error = None
+                try:
+                    with st.spinner("Running multi-agent research..."):
+                        execution = run_research_detailed(
+                            query, use_rag=use_rag, use_cache=use_cache,
+                            model_route=model_route.lower(),
+                        )
+                    st.session_state.research_execution = execution
+                    if execution.status == "SUCCESS":
+                        st.session_state.research_result = execution.final_answer
+                except Exception:
+                    st.session_state.research_error = (
+                        "Research could not be completed. Check that Ollama is running "
+                        "and your internet connection is available, then try again."
+                    )
+
+        if st.session_state.research_error:
+            st.error(st.session_state.research_error)
+        if st.session_state.research_execution is not None:
+            render_research_console(st.session_state.research_execution)
+        else:
+            st.caption("Your latest execution summary, evidence, and final answer will appear here.")
+
+    with analytics_tab:
+        render_analytics()
 
 
 if __name__ == "__main__":

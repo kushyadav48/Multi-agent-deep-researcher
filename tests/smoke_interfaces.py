@@ -1,5 +1,6 @@
 """Opt-in HTTP and raw MCP stdio smoke; no research/model calls."""
 
+import argparse
 import json
 from pathlib import Path
 from queue import Queue, Empty
@@ -15,9 +16,9 @@ from urllib.request import urlopen
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def streamlit_smoke(log):
+def streamlit_smoke(log, port=None):
     with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
+        probe.bind(("127.0.0.1", 0 if port is None else port))
         port = probe.getsockname()[1]
     process = subprocess.Popen(
         [sys.executable, "-m", "streamlit", "run", "app.py", "--server.headless=true",
@@ -38,10 +39,25 @@ def streamlit_smoke(log):
         with urlopen(f"http://127.0.0.1:{port}/", timeout=5) as response:
             root_status = response.status
         assert root_status == health_status == 200 and health_body == "ok"
-        return {"root_http": root_status, "health_http": health_status, "health_body": health_body}
+        result = {"root_http": root_status, "health_http": health_status, "health_body": health_body}
     finally:
         process.terminate()
         process.wait(timeout=20)
+    # Server workers may release the listener shortly after the launcher exits.
+    deadline = monotonic() + 10
+    while True:
+        with socket.socket() as probe:
+            probe.settimeout(1)
+            if probe.connect_ex(("127.0.0.1", port)) != 0:
+                break
+        assert monotonic() < deadline, "Streamlit port remained open"
+        sleep(0.2)
+    log.flush()
+    log.seek(0)
+    output = log.read().decode("utf-8", errors="replace")
+    assert "Traceback (most recent call last)" not in output, output
+    result.update(port=port, port_closed=True, no_immediate_exception=True)
+    return result
 
 
 def mcp_smoke(log):
@@ -113,9 +129,12 @@ def mcp_smoke(log):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--port", type=int, default=None, help="Streamlit port; default selects a free port")
+    args = parser.parse_args()
     with tempfile.TemporaryFile(mode="w+b") as log:
         try:
-            print(json.dumps({"streamlit": streamlit_smoke(log), "mcp": mcp_smoke(log)}, indent=2))
+            print(json.dumps({"streamlit": streamlit_smoke(log, args.port), "mcp": mcp_smoke(log)}, indent=2))
         except Exception:
             log.seek(0)
             sys.stderr.write(log.read().decode("utf-8", errors="replace"))

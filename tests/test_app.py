@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from streamlit.testing.v1 import AppTest
+from tests.ui.fixtures import execution_result
 
 
 APP = str(Path(__file__).resolve().parents[1] / "app.py")
@@ -19,7 +20,8 @@ class AppTests(unittest.TestCase):
         self.addCleanup(default.stop)
 
     def test_controls_toggle_canonical_research_and_result_rendering(self):
-        result = SimpleNamespace(final_answer="Answer [Document: notes.md]")
+        result = execution_result()
+        result.final_answer = "Answer [Document: notes.md]"
         with patch("agents.run_research_detailed", return_value=result) as research:
             app = AppTest.from_file(APP, default_timeout=30).run()
             self.assertFalse(app.exception)
@@ -41,7 +43,7 @@ class AppTests(unittest.TestCase):
 
     def test_manual_routes_reach_canonical_backend_without_automatic_research(self):
         for label in ("Fast", "Quality"):
-            with self.subTest(route=label), patch("agents.run_research_detailed", return_value=SimpleNamespace(final_answer="answer")) as research:
+            with self.subTest(route=label), patch("agents.run_research_detailed", return_value=execution_result()) as research:
                 app = AppTest.from_file(APP, default_timeout=30).run()
                 app.selectbox(key="model_route").select(label).run()
                 self.assertFalse(app.exception)
@@ -88,7 +90,7 @@ class AppTests(unittest.TestCase):
     def test_error_and_exception_do_not_render_stale_answer(self):
         for error in (None, RuntimeError('backend offline')):
             with self.subTest(error=error), patch('agents.run_research_detailed',
-                    return_value=SimpleNamespace(final_answer='Error: failed'), side_effect=error):
+                    return_value=execution_result('error'), side_effect=error):
                 app = AppTest.from_file(APP, default_timeout=30).run()
                 app.session_state.research_result = 'stale answer'
                 app.text_area(key='research_query').set_value('MCP')
@@ -96,6 +98,38 @@ class AppTests(unittest.TestCase):
                 self.assertFalse(app.exception)
                 self.assertTrue(app.error)
                 self.assertIsNone(app.session_state.research_result)
+
+    def test_result_survives_rerun_navigation_refresh_and_control_changes(self):
+        result = execution_result('complex')
+        with patch('agents.run_research_detailed', return_value=result) as research:
+            app = AppTest.from_file(APP, default_timeout=30).run()
+            self.assertEqual([tab.label for tab in app.tabs], ['Research', 'Analytics'])
+            app.text_area(key='research_query').set_value('compare protocols')
+            next(b for b in app.button if b.label == 'Research').click().run()
+            app.run()
+            app.session_state.console_view = 'Analytics'
+            app.run()
+            app.button(key='refresh_analytics').click().run()
+            app.session_state.console_view = 'Research'
+            app.selectbox(key='model_route').select('Quality').run()
+            self.assertFalse(app.exception)
+            research.assert_called_once()
+            self.assertIs(app.session_state.research_execution, result)
+            self.assertIn(result.final_answer, [m.value for m in app.markdown])
+            self.assertEqual(app.text_area(key='research_query').value, 'compare protocols')
+            self.service.ingest_file.assert_not_called()
+
+    def test_analytics_failure_does_not_prevent_explicit_research(self):
+        with patch('observability.store.get_default_metrics_store', side_effect=OSError('SECRET')), \
+             patch('agents.run_research_detailed', return_value=execution_result()) as research:
+            app = AppTest.from_file(APP, default_timeout=30).run()
+            self.assertFalse(app.exception)
+            self.assertTrue(app.warning)
+            app.text_area(key='research_query').set_value('MCP')
+            next(b for b in app.button if b.label == 'Research').click().run()
+            self.assertFalse(app.exception)
+            research.assert_called_once()
+            self.assertIn('Postprocessed final research answer', '\n'.join(m.value for m in app.markdown))
 
     def test_empty_query_does_not_execute_research(self):
         with patch('agents.run_research_detailed') as research:

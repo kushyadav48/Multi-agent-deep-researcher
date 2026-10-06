@@ -99,7 +99,7 @@ Run the UI:
 python -m streamlit run app.py
 ```
 
-Open `http://localhost:8501`, enter a research query, and select **Research**. The final synthesized answer appears with source links. Local inference can take time. Stop the app with Ctrl+C.
+Open `http://localhost:8501`, enter a research query, and select **Research**. The Research Execution Console shows the final synthesized answer and the observable execution trace. Local inference can take time. Stop the app with Ctrl+C.
 
 ## MCP usage
 
@@ -130,7 +130,8 @@ Keep Ollama running while the client calls the research tool.
 agents.py         Research agents, DDGS tool, tasks, and run_research()
 observability/    Typed execution results, request recorder, SQLite metrics
 server.py         MCP stdio interface
-app.py            Streamlit interface
+app.py            Streamlit entry point, research form, knowledge-base controls
+ui/               Research console, operational analytics, pure formatting helpers
 requirements.txt  Direct runtime dependencies
 README.md         Setup and authoritative architecture documentation
 .gitignore        Local environment, secrets, and generated-file exclusions
@@ -140,7 +141,31 @@ README.md         Setup and authoritative architecture documentation
 
 The base workflow follows [the reference project](https://github.com/patchy631/ai-engineering-hub/tree/main/Multi-Agent-deep-researcher-mcp-windows-linux). This implementation intentionally uses DDGS instead of LinkUp and local Qwen2.5 3B instead of the reference's Ollama DeepSeek R1 7B model. It also retains the worker-thread and stdout/event-flush handling needed for the local Windows/CrewAI MCP setup. No search API key is required.
 
-Semantic caching is implemented in Phase 6, deterministic local model routing in Phase 7, and structured observability with persistent operational metrics in Phase 8. The Research Execution Console (Phase 9) and formal benchmarking/evaluation (Phase 10) remain future work.
+Semantic caching is implemented in Phase 6, deterministic local model routing in Phase 7, structured observability with persistent operational metrics in Phase 8, and the Research Execution Console with Analytics in Phase 9. Formal benchmarking/evaluation (Phase 10) remains future work.
+
+## Research Execution Console (Phase 9)
+
+The single Streamlit app has **Research** and **Analytics** tabs. The sidebar preserves explicit PDF/TXT/MD ingestion, stored chunk counts, the local knowledge-base toggle, semantic-cache toggle, and Auto/Fast/Quality routing. Upload selection never ingests automatically. Research runs only on form submission through `run_research_detailed()`; tab navigation, analytics refresh, and ordinary reruns do not repeat research. The latest structured result stays in that browser session until another request, tab closure, or server restart.
+
+The Research view displays the submitted question and a visible **Execution Summary**: SIMPLE/COMPLEX classification, FAST/QUALITY route, cache decision, RAG/web usage, chunk/result counts, total runtime, and reported tokens. Searcher, Analyst, and Writer model assignments come directly from the captured routing trace, including manually selected routes.
+
+Collapsed sections provide the observable execution details:
+
+- **Routing Decision:** requested mode, selected route, classification, score, quality threshold, policy version, and human-readable reasons.
+- **Semantic Cache:** status, available similarity/distance, configured strict threshold, and reason. Exact and semantic hits clearly indicate that Crew, DDGS, and RAG were not executed.
+- **RAG Evidence:** status, retrieval time, chunk count, source, actual page when present, chunk index, and available distance. Full retrieved text lives in individual expanders; nonpaged documents have no invented page.
+- **Web Search Results:** each actual DDGS call has its own query, duration, status, and returned results. Titles, HTTP(S) source links, and snippets come from the trace; rendering performs no search.
+- **Web Searcher Output**, **Research Analyst Output**, and **Technical Writer Output:** task status, actual model, and captured observable task deliverable, or a clear unavailable/bypass reason. Raw Writer output remains distinct from the final answer.
+- **Execution Timings:** routing, cache lookup, RAG retrieval, web search, Crew, and total. Values below one second use milliseconds; longer values use seconds. Unexecuted stages say “Not executed.” Web time is included in Crew time, so stage timings are not additive. Input/output/total token counts say “Not reported” when absent; no token counts or costs are estimated.
+- **Request Details:** request ID, UTC timestamps, and metrics persistence status.
+
+**Final Research Answer** is a prominent, always-open Markdown section. Warnings remain visible. Failed requests retain their observable trace and show a concise error category rather than raw exception text or a Python traceback. Intermediate agent content is observable task output, not private reasoning: hidden chain-of-thought, scratchpads, prompts, provider messages, credentials, and embeddings are never rendered.
+
+The Analytics view reads `MetricsStore.summary()` and `recent(limit=20)` from `data/metrics/research_metrics.db`. It shows total/successful/failed requests, cache hit rate and hits/eligible lookups, FAST/QUALITY usage, average/P50/P95 latency, RAG/DDGS request usage, total DDGS calls, and a recent-request table with status, route, cache status, RAG use, web counts, runtime, and tokens. Hit rate excludes disabled, bypassed, and failed cache lookups. Summary cards cover all history; the recent-request table covers the latest 20 requests and includes measured latency in its Total Time column. Missing latency is explicitly unavailable. **Refresh Analytics** reloads history without polling or running research.
+
+Persistent analytics store no raw queries, final answers, agent outputs, RAG text, or web snippets. The table displays only a short query-hash prefix and operational fields, allowlisted before being sent to the browser. Rich research content is rendered only from the current session result. An empty database shows a clear empty state, and an unreadable metrics store shows a warning while Research remains usable.
+
+The `ui/` package keeps rendering separate from execution and pure formatting. Analytics uses native Streamlit Markdown tables, avoiding dataframe/chart DLL loading on systems where Windows Application Control blocks the installed pandas binaries. Deterministic trace fixtures and Streamlit `AppTest` cover the console, session reruns, cache bypasses, knowledge-base regression, and analytics against temporary SQLite stores without live Ollama or DDGS calls. No dependencies or backend policies change in Phase 9.
 
 ## Integrated local knowledge base (Phase 5)
 
