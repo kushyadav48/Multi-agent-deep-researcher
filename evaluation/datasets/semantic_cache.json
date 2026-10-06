@@ -1,0 +1,22 @@
+[
+  {"id":"cache-01","first":"What is the Model Context Protocol?","second":"Explain the Model Context Protocol.","expected_reuse":true},
+  {"id":"cache-02","first":"How does TCP establish a connection?","second":"Explain how TCP establishes a connection.","expected_reuse":true},
+  {"id":"cache-03","first":"How does RAG work?","second":"Explain retrieval augmented generation.","expected_reuse":true},
+  {"id":"cache-04","first":"What is photosynthesis?","second":"Explain photosynthesis.","expected_reuse":true},
+  {"id":"cache-05","first":"Explain the benefits of semantic caching.","second":"Describe the advantages of semantic caching.","expected_reuse":true},
+  {"id":"cache-06","first":"How do clients interact with MCP servers?","second":"Describe MCP server interaction with clients.","expected_reuse":true},
+  {"id":"cache-07","first":"Explain dense retrieval in RAG.","second":"In RAG, explain dense retrieval.","expected_reuse":true},
+  {"id":"cache-08","first":"What are the risks of stale cached answers?","second":"Describe risks from cached answers that are stale.","expected_reuse":true},
+  {"id":"cache-09","first":"Summarize the purpose of DNS.","second":"Explain what DNS is for.","expected_reuse":true},
+  {"id":"cache-10","first":"How do I enable caching in Python?","second":"Explain how to enable caching in Python.","expected_reuse":true},
+  {"id":"cache-11","first":"What are the advantages of MCP?","second":"What are the disadvantages of MCP?","expected_reuse":false},
+  {"id":"cache-12","first":"Should a research assistant reuse cached answers?","second":"Should a research assistant not reuse cached answers?","expected_reuse":false},
+  {"id":"cache-13","first":"How do I enable caching in Python?","second":"How do I disable caching in Python?","expected_reuse":false},
+  {"id":"cache-14","first":"When should I increase the cache TTL?","second":"When should I decrease the cache TTL?","expected_reuse":false},
+  {"id":"cache-15","first":"Should retrieval run before web search?","second":"Should retrieval run after web search?","expected_reuse":false},
+  {"id":"cache-16","first":"Explain a cache TTL of 3600 seconds.","second":"Explain a cache TTL of 60 seconds.","expected_reuse":false},
+  {"id":"cache-17","first":"Recommend enabling cache reuse for this workload.","second":"Recommend disabling cache reuse for this workload.","expected_reuse":false},
+  {"id":"cache-18","first":"What is the Model Context Protocol?","second":"What are the security risks of the Model Context Protocol?","expected_reuse":false},
+  {"id":"cache-19","first":"Explain TCP connection establishment.","second":"Explain TCP connection termination.","expected_reuse":false},
+  {"id":"cache-20","first":"What is MCP?","second":"How does photosynthesis work?","expected_reuse":false}
+]

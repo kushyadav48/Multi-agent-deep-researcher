@@ -1,0 +1,12 @@
+[
+  {"id":"rag-01","query":"What is Project Meridian's internal protocol codename?","expected_source":"project_meridian.md","expected_fact":"Cedar-47"},
+  {"id":"rag-02","query":"What is the Project Meridian acknowledgement window?","expected_source":"project_meridian.md","expected_fact":"19 milliseconds"},
+  {"id":"rag-03","query":"What recovery window does Project Alpha use?","expected_source":"project_alpha.md","expected_fact":"17 minutes"},
+  {"id":"rag-04","query":"What is Project Alpha's audit marker?","expected_source":"project_alpha.md","expected_fact":"Amber-62"},
+  {"id":"rag-05","query":"What batch size does Project Beta use for invoice exports?","expected_source":"project_beta.md","expected_fact":"83 records"},
+  {"id":"rag-06","query":"What is Project Beta's invoice ledger codename?","expected_source":"project_beta.md","expected_fact":"Willow-28"},
+  {"id":"rag-07","query":"How many replica zones does the synthetic architecture use?","expected_source":"architecture_notes.md","expected_fact":"three replica zones"},
+  {"id":"rag-08","query":"What integrity marker identifies the synthetic protocol?","expected_source":"protocol_notes.md","expected_fact":"Quartz-91"},
+  {"id":"rag-09","query":"How long is the synthetic cold-storage retention window?","expected_source":"storage_notes.md","expected_fact":"41 days"},
+  {"id":"rag-10","query":"What label identifies the archive restore queue?","expected_source":"storage_notes.md","expected_fact":"Birch-16"}
+]

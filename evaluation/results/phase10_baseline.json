@@ -1,0 +1,2020 @@
+{
+  "timestamp": "2026-10-06T20:09:12.054229+00:00",
+  "git_commit": "d32671f5a16ac0a7e02c1bf4c019ffab9942696d",
+  "environment": {
+    "python": "3.11.9",
+    "platform": "Windows-10-10.0.26300-SP0",
+    "cpu_measurement": "Python process CPU time only; excludes Ollama server and GPU",
+    "local_models": [
+      {
+        "name": "qwen3:1.7b",
+        "digest": "8f68893c685c3ddff2aa3fffce2aa60a30bb2da65ca488b61fff134a4d1730e7",
+        "size_bytes": 1359293444,
+        "quantization": "Q4_K_M"
+      },
+      {
+        "name": "qwen3-embedding:0.6b",
+        "digest": "ac6da0dfba84a81fdbfbaf330198c33cd77c4cdfc53e8bc50eb581914a15621d",
+        "size_bytes": 639150858,
+        "quantization": "Q8_0"
+      },
+      {
+        "name": "qwen2.5:3b",
+        "digest": "357c53fb659c5076de1d65ccb0b397446227b71a42be9d1603d46168015c9e4b",
+        "size_bytes": 1929912432,
+        "quantization": "Q4_K_M"
+      }
+    ]
+  },
+  "configuration": {
+    "searcher": "ollama/qwen2.5:3b",
+    "fast_synthesis": "ollama/qwen3:1.7b",
+    "quality_synthesis": "ollama/qwen2.5:3b",
+    "embedding_model": "qwen3-embedding:0.6b",
+    "router_policy": "v1",
+    "quality_threshold": 3,
+    "cache_similarity_threshold": 0.97,
+    "cache_ttl_seconds": 3600.0,
+    "cache_version": "2",
+    "rag_top_k": 4,
+    "rag_max_distance": 0.6,
+    "max_research_invocations": 8,
+    "max_crew_executions": 7
+  },
+  "source_hash": "86e6f066b75fe0eea1d43e6c90b5754c3960c6813273d00795bea973ee3d720e",
+  "benchmark_version": "phase10-v1",
+  "research_invocations": 8,
+  "research_reservations": 8,
+  "crew_executions": 7,
+  "crew_reservations": 7,
+  "suites": [
+    {
+      "name": "router",
+      "category": "OFFLINE",
+      "cases": [
+        {
+          "case_id": "route-01",
+          "suite": "router",
+          "status": "PASS",
+          "duration_ms": 0.9894999966491014,
+          "route": "FAST",
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_route": "FAST",
+            "actual_route": "FAST",
+            "score": 0
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "route-02",
+          "suite": "router",
+          "status": "PASS",
+          "duration_ms": 0.08250000246334821,
+          "route": "FAST",
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_route": "FAST",
+            "actual_route": "FAST",
+            "score": 0
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "route-03",
+          "suite": "router",
+          "status": "PASS",
+          "duration_ms": 0.08440000237897038,
+          "route": "FAST",
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_route": "FAST",
+            "actual_route": "FAST",
+            "score": 0
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "route-04",
+          "suite": "router",
+          "status": "PASS",
+          "duration_ms": 0.06120000034570694,
+          "route": "FAST",
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_route": "FAST",
+            "actual_route": "FAST",
+            "score": 0
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "route-05",
+          "suite": "router",
+          "status": "PASS",
+          "duration_ms": 0.08469999011140317,
+          "route": "FAST",
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_route": "FAST",
+            "actual_route": "FAST",
+            "score": 0
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "route-06",
+          "suite": "router",
+          "status": "PASS",
+          "duration_ms": 0.08349999552592635,
+          "route": "FAST",
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_route": "FAST",
+            "actual_route": "FAST",
+            "score": 0
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "route-07",
+          "suite": "router",
+          "status": "PASS",
+          "duration_ms": 0.079699995694682,
+          "route": "FAST",
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_route": "FAST",
+            "actual_route": "FAST",
+            "score": 0
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "route-08",
+          "suite": "router",
+          "status": "PASS",
+          "duration_ms": 0.0788000033935532,
+          "route": "QUALITY",
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_route": "QUALITY",
+            "actual_route": "QUALITY",
+            "score": 3
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "route-09",
+          "suite": "router",
+          "status": "PASS",
+          "duration_ms": 0.10309999925084412,
+          "route": "FAST",
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_route": "FAST",
+            "actual_route": "FAST",
+            "score": 2
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "route-10",
+          "suite": "router",
+          "status": "PASS",
+          "duration_ms": 0.061400001868605614,
+          "route": "FAST",
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_route": "FAST",
+            "actual_route": "FAST",
+            "score": 2
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "route-11",
+          "suite": "router",
+          "status": "PASS",
+          "duration_ms": 0.08399999933317304,
+          "route": "QUALITY",
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_route": "QUALITY",
+            "actual_route": "QUALITY",
+            "score": 4
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "route-12",
+          "suite": "router",
+          "status": "PASS",
+          "duration_ms": 0.2638000005390495,
+          "route": "QUALITY",
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_route": "QUALITY",
+            "actual_route": "QUALITY",
+            "score": 3
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "route-13",
+          "suite": "router",
+          "status": "PASS",
+          "duration_ms": 0.06059999577701092,
+          "route": "QUALITY",
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_route": "QUALITY",
+            "actual_route": "QUALITY",
+            "score": 3
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "route-14",
+          "suite": "router",
+          "status": "PASS",
+          "duration_ms": 0.08650000381749123,
+          "route": "QUALITY",
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_route": "QUALITY",
+            "actual_route": "QUALITY",
+            "score": 3
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "route-15",
+          "suite": "router",
+          "status": "PASS",
+          "duration_ms": 0.06659999780822545,
+          "route": "QUALITY",
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_route": "QUALITY",
+            "actual_route": "QUALITY",
+            "score": 3
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "route-16",
+          "suite": "router",
+          "status": "PASS",
+          "duration_ms": 0.0771000050008297,
+          "route": "QUALITY",
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_route": "QUALITY",
+            "actual_route": "QUALITY",
+            "score": 3
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "route-17",
+          "suite": "router",
+          "status": "PASS",
+          "duration_ms": 0.08710000838618726,
+          "route": "QUALITY",
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_route": "QUALITY",
+            "actual_route": "QUALITY",
+            "score": 3
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "route-18",
+          "suite": "router",
+          "status": "PASS",
+          "duration_ms": 0.07949999417178333,
+          "route": "QUALITY",
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_route": "QUALITY",
+            "actual_route": "QUALITY",
+            "score": 3
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "route-19",
+          "suite": "router",
+          "status": "PASS",
+          "duration_ms": 0.0670000008540228,
+          "route": "QUALITY",
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_route": "QUALITY",
+            "actual_route": "QUALITY",
+            "score": 3
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "route-20",
+          "suite": "router",
+          "status": "PASS",
+          "duration_ms": 0.07819999882485718,
+          "route": "FAST",
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_route": "FAST",
+            "actual_route": "FAST",
+            "score": 1
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "route-21",
+          "suite": "router",
+          "status": "PASS",
+          "duration_ms": 0.07739999273326248,
+          "route": "FAST",
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_route": "FAST",
+            "actual_route": "FAST",
+            "score": 1
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "route-22",
+          "suite": "router",
+          "status": "PASS",
+          "duration_ms": 0.06859999848529696,
+          "route": "QUALITY",
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_route": "QUALITY",
+            "actual_route": "QUALITY",
+            "score": 3
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "route-23",
+          "suite": "router",
+          "status": "PASS",
+          "duration_ms": 0.07639999967068434,
+          "route": "QUALITY",
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_route": "QUALITY",
+            "actual_route": "QUALITY",
+            "score": 3
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "route-24",
+          "suite": "router",
+          "status": "PASS",
+          "duration_ms": 0.07910000567790121,
+          "route": "QUALITY",
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_route": "QUALITY",
+            "actual_route": "QUALITY",
+            "score": 7
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "route-25",
+          "suite": "router",
+          "status": "PASS",
+          "duration_ms": 0.07840000034775585,
+          "route": "QUALITY",
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_route": "QUALITY",
+            "actual_route": "QUALITY",
+            "score": 3
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "route-26",
+          "suite": "router",
+          "status": "PASS",
+          "duration_ms": 0.08129999332595617,
+          "route": "FAST",
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_route": "FAST",
+            "actual_route": "FAST",
+            "score": 0
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "route-27",
+          "suite": "router",
+          "status": "PASS",
+          "duration_ms": 0.06639999628532678,
+          "route": "FAST",
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_route": "FAST",
+            "actual_route": "FAST",
+            "score": 0
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "route-28",
+          "suite": "router",
+          "status": "PASS",
+          "duration_ms": 0.11999999696854502,
+          "route": "FAST",
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_route": "FAST",
+            "actual_route": "FAST",
+            "score": 1
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "route-29",
+          "suite": "router",
+          "status": "PASS",
+          "duration_ms": 0.1664000010350719,
+          "route": "FAST",
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_route": "FAST",
+            "actual_route": "FAST",
+            "score": 2
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "route-30",
+          "suite": "router",
+          "status": "PASS",
+          "duration_ms": 0.06960000609979033,
+          "route": "QUALITY",
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_route": "QUALITY",
+            "actual_route": "QUALITY",
+            "score": 3
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "route-31",
+          "suite": "router",
+          "status": "PASS",
+          "duration_ms": 0.06350000330712646,
+          "route": "QUALITY",
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_route": "QUALITY",
+            "actual_route": "QUALITY",
+            "score": 3
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "route-32",
+          "suite": "router",
+          "status": "PASS",
+          "duration_ms": 0.1201999984914437,
+          "route": "FAST",
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_route": "FAST",
+            "actual_route": "FAST",
+            "score": 2
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "route-33",
+          "suite": "router",
+          "status": "PASS",
+          "duration_ms": 0.08260000322479755,
+          "route": "QUALITY",
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_route": "QUALITY",
+            "actual_route": "QUALITY",
+            "score": 4
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "route-34",
+          "suite": "router",
+          "status": "PASS",
+          "duration_ms": 0.06629999552387744,
+          "route": "FAST",
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_route": "FAST",
+            "actual_route": "FAST",
+            "score": 1
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "route-35",
+          "suite": "router",
+          "status": "PASS",
+          "duration_ms": 0.08270000398624688,
+          "route": "FAST",
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_route": "FAST",
+            "actual_route": "FAST",
+            "score": 1
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "route-36",
+          "suite": "router",
+          "status": "PASS",
+          "duration_ms": 0.08589999924879521,
+          "route": "QUALITY",
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_route": "QUALITY",
+            "actual_route": "QUALITY",
+            "score": 7
+          },
+          "errors": [],
+          "warnings": []
+        }
+      ],
+      "metrics": {
+        "total": 36,
+        "correct": 36,
+        "incorrect": 0,
+        "accuracy": 1.0,
+        "confusion_matrix": {
+          "FAST": {
+            "FAST": 18,
+            "QUALITY": 0
+          },
+          "QUALITY": {
+            "FAST": 0,
+            "QUALITY": 18
+          }
+        },
+        "attempted_cases": 36,
+        "execution_errors": []
+      }
+    },
+    {
+      "name": "cache_pairs",
+      "category": "OFFLINE",
+      "cases": [
+        {
+          "case_id": "cache-01",
+          "suite": "cache_pairs",
+          "status": "PASS",
+          "duration_ms": 7424.621300000581,
+          "route": null,
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_reuse": true,
+            "accepted": true,
+            "similarity": 0.9879530668258667,
+            "distance": 0.0120469331741333,
+            "hit_kind": "semantic",
+            "lookup_ms": 123.98859999666456,
+            "compatible": true
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "cache-02",
+          "suite": "cache_pairs",
+          "status": "PASS",
+          "duration_ms": 2480.865300007281,
+          "route": null,
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_reuse": true,
+            "accepted": true,
+            "similarity": 0.9827454090118408,
+            "distance": 0.01725459098815918,
+            "hit_kind": "semantic",
+            "lookup_ms": 227.66689999843948,
+            "compatible": true
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "cache-03",
+          "suite": "cache_pairs",
+          "status": "FAIL",
+          "duration_ms": 2488.923099997919,
+          "route": null,
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_reuse": true,
+            "accepted": false,
+            "similarity": 0.7673232555389404,
+            "distance": 0.23267674446105957,
+            "hit_kind": null,
+            "lookup_ms": 186.5436999942176,
+            "compatible": true
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "cache-04",
+          "suite": "cache_pairs",
+          "status": "FAIL",
+          "duration_ms": 2518.1328000035137,
+          "route": null,
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_reuse": true,
+            "accepted": false,
+            "similarity": 0.9099879264831543,
+            "distance": 0.0900120735168457,
+            "hit_kind": null,
+            "lookup_ms": 199.0016000054311,
+            "compatible": true
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "cache-05",
+          "suite": "cache_pairs",
+          "status": "PASS",
+          "duration_ms": 2473.15659999731,
+          "route": null,
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_reuse": true,
+            "accepted": true,
+            "similarity": 0.982718825340271,
+            "distance": 0.017281174659729004,
+            "hit_kind": "semantic",
+            "lookup_ms": 187.90330000047106,
+            "compatible": true
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "cache-06",
+          "suite": "cache_pairs",
+          "status": "FAIL",
+          "duration_ms": 2502.791700011585,
+          "route": null,
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_reuse": true,
+            "accepted": false,
+            "similarity": 0.8548789620399475,
+            "distance": 0.1451210379600525,
+            "hit_kind": null,
+            "lookup_ms": 189.02320000051986,
+            "compatible": true
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "cache-07",
+          "suite": "cache_pairs",
+          "status": "PASS",
+          "duration_ms": 2584.5715000032214,
+          "route": null,
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_reuse": true,
+            "accepted": true,
+            "similarity": 0.9844247102737427,
+            "distance": 0.015575289726257324,
+            "hit_kind": "semantic",
+            "lookup_ms": 292.2949000057997,
+            "compatible": true
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "cache-08",
+          "suite": "cache_pairs",
+          "status": "FAIL",
+          "duration_ms": 2488.209999995888,
+          "route": null,
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_reuse": true,
+            "accepted": false,
+            "similarity": 0.9136129021644592,
+            "distance": 0.08638709783554077,
+            "hit_kind": null,
+            "lookup_ms": 208.0971999967005,
+            "compatible": true
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "cache-09",
+          "suite": "cache_pairs",
+          "status": "FAIL",
+          "duration_ms": 2493.9988999976777,
+          "route": null,
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_reuse": true,
+            "accepted": false,
+            "similarity": 0.8529627323150635,
+            "distance": 0.14703726768493652,
+            "hit_kind": null,
+            "lookup_ms": 186.0187000129372,
+            "compatible": true
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "cache-10",
+          "suite": "cache_pairs",
+          "status": "FAIL",
+          "duration_ms": 2508.5014999931445,
+          "route": null,
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_reuse": true,
+            "accepted": false,
+            "similarity": 0.9660357236862183,
+            "distance": 0.03396427631378174,
+            "hit_kind": null,
+            "lookup_ms": 201.7963999969652,
+            "compatible": true
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "cache-11",
+          "suite": "cache_pairs",
+          "status": "PASS",
+          "duration_ms": 2472.30860000127,
+          "route": null,
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_reuse": false,
+            "accepted": false,
+            "similarity": 0.9321664571762085,
+            "distance": 0.0678335428237915,
+            "hit_kind": null,
+            "lookup_ms": 182.9608999978518,
+            "compatible": false
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "cache-12",
+          "suite": "cache_pairs",
+          "status": "PASS",
+          "duration_ms": 2471.402700000908,
+          "route": null,
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_reuse": false,
+            "accepted": false,
+            "similarity": 0.9926463961601257,
+            "distance": 0.007353603839874268,
+            "hit_kind": null,
+            "lookup_ms": 183.5960000025807,
+            "compatible": false
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "cache-13",
+          "suite": "cache_pairs",
+          "status": "PASS",
+          "duration_ms": 2480.4858999996213,
+          "route": null,
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_reuse": false,
+            "accepted": false,
+            "similarity": 0.9233282804489136,
+            "distance": 0.07667171955108643,
+            "hit_kind": null,
+            "lookup_ms": 189.05119999544695,
+            "compatible": false
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "cache-14",
+          "suite": "cache_pairs",
+          "status": "PASS",
+          "duration_ms": 2488.567799999146,
+          "route": null,
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_reuse": false,
+            "accepted": false,
+            "similarity": 0.9437085390090942,
+            "distance": 0.05629146099090576,
+            "hit_kind": null,
+            "lookup_ms": 181.01759999990463,
+            "compatible": true
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "cache-15",
+          "suite": "cache_pairs",
+          "status": "PASS",
+          "duration_ms": 2477.6418000110425,
+          "route": null,
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_reuse": false,
+            "accepted": false,
+            "similarity": 0.9642656445503235,
+            "distance": 0.035734355449676514,
+            "hit_kind": null,
+            "lookup_ms": 183.30170000263024,
+            "compatible": true
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "cache-16",
+          "suite": "cache_pairs",
+          "status": "PASS",
+          "duration_ms": 2481.0644000099273,
+          "route": null,
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_reuse": false,
+            "accepted": false,
+            "similarity": 0.9701838493347168,
+            "distance": 0.029816150665283203,
+            "hit_kind": null,
+            "lookup_ms": 187.68709999858402,
+            "compatible": false
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "cache-17",
+          "suite": "cache_pairs",
+          "status": "PASS",
+          "duration_ms": 2467.4895999924047,
+          "route": null,
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_reuse": false,
+            "accepted": false,
+            "similarity": 0.8970826268196106,
+            "distance": 0.1029173731803894,
+            "hit_kind": null,
+            "lookup_ms": 188.33679999806918,
+            "compatible": false
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "cache-18",
+          "suite": "cache_pairs",
+          "status": "PASS",
+          "duration_ms": 2509.936500006006,
+          "route": null,
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_reuse": false,
+            "accepted": false,
+            "similarity": 0.8747262954711914,
+            "distance": 0.1252737045288086,
+            "hit_kind": null,
+            "lookup_ms": 218.5615000053076,
+            "compatible": false
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "cache-19",
+          "suite": "cache_pairs",
+          "status": "PASS",
+          "duration_ms": 2479.278200000408,
+          "route": null,
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_reuse": false,
+            "accepted": false,
+            "similarity": 0.8296254873275757,
+            "distance": 0.17037451267242432,
+            "hit_kind": null,
+            "lookup_ms": 181.8555999925593,
+            "compatible": false
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "cache-20",
+          "suite": "cache_pairs",
+          "status": "PASS",
+          "duration_ms": 2482.5716000050306,
+          "route": null,
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "expected_reuse": false,
+            "accepted": false,
+            "similarity": 0.44249844551086426,
+            "distance": 0.5575015544891357,
+            "hit_kind": null,
+            "lookup_ms": 192.2459999914281,
+            "compatible": true
+          },
+          "errors": [],
+          "warnings": []
+        }
+      ],
+      "metrics": {
+        "TP": 4,
+        "TN": 10,
+        "FP": 0,
+        "FN": 6,
+        "total": 20,
+        "precision": 1.0,
+        "recall": 0.4,
+        "accuracy": 0.7,
+        "false_positives": [],
+        "false_negatives": [
+          "cache-03",
+          "cache-04",
+          "cache-06",
+          "cache-08",
+          "cache-09",
+          "cache-10"
+        ],
+        "attempted_cases": 20,
+        "execution_errors": []
+      }
+    },
+    {
+      "name": "rag_retrieval",
+      "category": "OFFLINE",
+      "cases": [
+        {
+          "case_id": "rag-01",
+          "suite": "rag_retrieval",
+          "status": "PASS",
+          "duration_ms": 60.31649999204092,
+          "route": null,
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "rank": 1,
+            "retrieval_ms": 60.31649999204092,
+            "expected_source": "project_meridian.md",
+            "returned_chunks": 4,
+            "returned_sources": [
+              "project_meridian.md",
+              "protocol_notes.md",
+              "project_beta.md",
+              "project_alpha.md"
+            ],
+            "distances": [
+              0.2252798080444336,
+              0.4504169821739197,
+              0.4966435432434082,
+              0.537249743938446
+            ]
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "rag-02",
+          "suite": "rag_retrieval",
+          "status": "PASS",
+          "duration_ms": 35.875399989890866,
+          "route": null,
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "rank": 1,
+            "retrieval_ms": 35.875399989890866,
+            "expected_source": "project_meridian.md",
+            "returned_chunks": 4,
+            "returned_sources": [
+              "project_meridian.md",
+              "project_alpha.md",
+              "project_beta.md",
+              "protocol_notes.md"
+            ],
+            "distances": [
+              0.2388167381286621,
+              0.42185091972351074,
+              0.49438023567199707,
+              0.5098593235015869
+            ]
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "rag-03",
+          "suite": "rag_retrieval",
+          "status": "PASS",
+          "duration_ms": 80.14810000895523,
+          "route": null,
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "rank": 1,
+            "retrieval_ms": 80.14810000895523,
+            "expected_source": "project_alpha.md",
+            "returned_chunks": 4,
+            "returned_sources": [
+              "project_alpha.md",
+              "project_beta.md",
+              "project_meridian.md",
+              "storage_notes.md"
+            ],
+            "distances": [
+              0.1929924488067627,
+              0.4794875383377075,
+              0.48809337615966797,
+              0.5322365760803223
+            ]
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "rag-04",
+          "suite": "rag_retrieval",
+          "status": "PASS",
+          "duration_ms": 54.40559999260586,
+          "route": null,
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "rank": 1,
+            "retrieval_ms": 54.40559999260586,
+            "expected_source": "project_alpha.md",
+            "returned_chunks": 4,
+            "returned_sources": [
+              "project_alpha.md",
+              "project_beta.md",
+              "protocol_notes.md",
+              "project_meridian.md"
+            ],
+            "distances": [
+              0.28324902057647705,
+              0.45426005125045776,
+              0.48683881759643555,
+              0.5101709365844727
+            ]
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "rag-05",
+          "suite": "rag_retrieval",
+          "status": "PASS",
+          "duration_ms": 69.24599999911152,
+          "route": null,
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "rank": 1,
+            "retrieval_ms": 69.24599999911152,
+            "expected_source": "project_beta.md",
+            "returned_chunks": 4,
+            "returned_sources": [
+              "project_beta.md",
+              "project_alpha.md",
+              "storage_notes.md",
+              "project_meridian.md"
+            ],
+            "distances": [
+              0.1558048129081726,
+              0.5308236479759216,
+              0.5594063997268677,
+              0.574552059173584
+            ]
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "rag-06",
+          "suite": "rag_retrieval",
+          "status": "PASS",
+          "duration_ms": 35.766000000876375,
+          "route": null,
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "rank": 1,
+            "retrieval_ms": 35.766000000876375,
+            "expected_source": "project_beta.md",
+            "returned_chunks": 4,
+            "returned_sources": [
+              "project_beta.md",
+              "project_alpha.md",
+              "project_meridian.md",
+              "protocol_notes.md"
+            ],
+            "distances": [
+              0.22281336784362793,
+              0.477428138256073,
+              0.4943145513534546,
+              0.5839765071868896
+            ]
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "rag-07",
+          "suite": "rag_retrieval",
+          "status": "PASS",
+          "duration_ms": 29.736100012087263,
+          "route": null,
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "rank": 1,
+            "retrieval_ms": 29.736100012087263,
+            "expected_source": "architecture_notes.md",
+            "returned_chunks": 4,
+            "returned_sources": [
+              "architecture_notes.md",
+              "storage_notes.md",
+              "protocol_notes.md",
+              "project_alpha.md"
+            ],
+            "distances": [
+              0.22188985347747803,
+              0.4671581983566284,
+              0.48362642526626587,
+              0.521150529384613
+            ]
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "rag-08",
+          "suite": "rag_retrieval",
+          "status": "PASS",
+          "duration_ms": 33.79220000351779,
+          "route": null,
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "rank": 1,
+            "retrieval_ms": 33.79220000351779,
+            "expected_source": "protocol_notes.md",
+            "returned_chunks": 4,
+            "returned_sources": [
+              "protocol_notes.md",
+              "project_meridian.md",
+              "project_alpha.md",
+              "project_beta.md"
+            ],
+            "distances": [
+              0.19075632095336914,
+              0.39860451221466064,
+              0.47980499267578125,
+              0.49293798208236694
+            ]
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "rag-09",
+          "suite": "rag_retrieval",
+          "status": "PASS",
+          "duration_ms": 34.84059999755118,
+          "route": null,
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "rank": 1,
+            "retrieval_ms": 34.84059999755118,
+            "expected_source": "storage_notes.md",
+            "returned_chunks": 4,
+            "returned_sources": [
+              "storage_notes.md",
+              "project_alpha.md",
+              "protocol_notes.md",
+              "project_meridian.md"
+            ],
+            "distances": [
+              0.20601379871368408,
+              0.45406103134155273,
+              0.48671966791152954,
+              0.48864543437957764
+            ]
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "rag-10",
+          "suite": "rag_retrieval",
+          "status": "PASS",
+          "duration_ms": 69.05530000221916,
+          "route": null,
+          "models": {},
+          "timings": {},
+          "tokens": {},
+          "measured": {
+            "rank": 1,
+            "retrieval_ms": 69.05530000221916,
+            "expected_source": "storage_notes.md",
+            "returned_chunks": 4,
+            "returned_sources": [
+              "storage_notes.md",
+              "project_alpha.md",
+              "project_beta.md",
+              "architecture_notes.md"
+            ],
+            "distances": [
+              0.3485238552093506,
+              0.5004444718360901,
+              0.5090675354003906,
+              0.5668128132820129
+            ]
+          },
+          "errors": [],
+          "warnings": []
+        }
+      ],
+      "metrics": {
+        "total": 10,
+        "top_k": 4,
+        "hit_at_1": 1.0,
+        "hit_at_k": 1.0,
+        "mrr": 1.0,
+        "source_hits": 10,
+        "misses": 0,
+        "mean_retrieval_ms": 50.318179999885615,
+        "attempted_cases": 10,
+        "execution_errors": []
+      }
+    },
+    {
+      "name": "synthesis",
+      "category": "CONTROLLED",
+      "cases": [
+        {
+          "case_id": "simple-fast",
+          "suite": "synthesis",
+          "status": "PASS",
+          "duration_ms": 42605.19490001025,
+          "route": "FAST",
+          "models": {
+            "searcher": "ollama/qwen2.5:3b",
+            "analyst": "ollama/qwen3:1.7b",
+            "writer": "ollama/qwen3:1.7b"
+          },
+          "timings": {
+            "routing_ms": 1.050899998517707,
+            "cache_lookup_ms": null,
+            "rag_retrieval_ms": null,
+            "web_search_ms": 0.2896000078180805,
+            "crew_ms": 40944.22380000469,
+            "total_ms": 42605.19490001025
+          },
+          "tokens": {
+            "input_tokens": 4090,
+            "output_tokens": 2894,
+            "total_tokens": 6984
+          },
+          "measured": {
+            "research_status": "SUCCESS",
+            "cache_status": "DISABLED",
+            "cache_similarity": null,
+            "cache_distance": null,
+            "rag_used": false,
+            "rag_status": "DISABLED",
+            "rag_chunks": 0,
+            "ddgs_calls": 3,
+            "web_results": 3,
+            "crew_executions": 1,
+            "total_ms": 42605.19490001025,
+            "total_tokens": 6984,
+            "answer_characters": 1769,
+            "answer_sha256": "e9e364d51a31572738d5eac601256499a7fb8f36606247241aa79b3aab69e445",
+            "agent_statuses": [
+              "COMPLETED",
+              "COMPLETED",
+              "COMPLETED"
+            ],
+            "web_statuses": [
+              "SUCCESS",
+              "SUCCESS",
+              "SUCCESS"
+            ],
+            "models_verified": true,
+            "rubric": {
+              "concepts_satisfied": 4,
+              "concepts_total": 4,
+              "coverage": 1.0,
+              "concept_checks": [
+                true,
+                true,
+                true,
+                true
+              ],
+              "nonempty": true,
+              "no_execution_error": true,
+              "expected_source_link": true
+            },
+            "python_process_cpu_ms": 2937.5,
+            "fixed_evidence_sha256": "edfad1e3511e964b9456a3a6e1cc89b79e62edd1e5f2c8b2c1132784b3e85846",
+            "fixed_evidence_verified": true
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "simple-quality",
+          "suite": "synthesis",
+          "status": "PASS",
+          "duration_ms": 27331.800900006783,
+          "route": "QUALITY",
+          "models": {
+            "searcher": "ollama/qwen2.5:3b",
+            "analyst": "ollama/qwen2.5:3b",
+            "writer": "ollama/qwen2.5:3b"
+          },
+          "timings": {
+            "routing_ms": 0.23330000112764537,
+            "cache_lookup_ms": null,
+            "rag_retrieval_ms": null,
+            "web_search_ms": 0.31409999064635485,
+            "crew_ms": 25617.132800005493,
+            "total_ms": 27331.800900006783
+          },
+          "tokens": {
+            "input_tokens": 2768,
+            "output_tokens": 1488,
+            "total_tokens": 4256
+          },
+          "measured": {
+            "research_status": "SUCCESS",
+            "cache_status": "DISABLED",
+            "cache_similarity": null,
+            "cache_distance": null,
+            "rag_used": false,
+            "rag_status": "DISABLED",
+            "rag_chunks": 0,
+            "ddgs_calls": 1,
+            "web_results": 1,
+            "crew_executions": 1,
+            "total_ms": 27331.800900006783,
+            "total_tokens": 4256,
+            "answer_characters": 2293,
+            "answer_sha256": "449ede9c7431374a183809c2d4ab73a52e78ba03af47f343b31b226b67db5a67",
+            "agent_statuses": [
+              "COMPLETED",
+              "COMPLETED",
+              "COMPLETED"
+            ],
+            "web_statuses": [
+              "SUCCESS"
+            ],
+            "models_verified": true,
+            "rubric": {
+              "concepts_satisfied": 4,
+              "concepts_total": 4,
+              "coverage": 1.0,
+              "concept_checks": [
+                true,
+                true,
+                true,
+                true
+              ],
+              "nonempty": true,
+              "no_execution_error": true,
+              "expected_source_link": true
+            },
+            "python_process_cpu_ms": 1968.75,
+            "fixed_evidence_sha256": "edfad1e3511e964b9456a3a6e1cc89b79e62edd1e5f2c8b2c1132784b3e85846",
+            "fixed_evidence_verified": true
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "complex-fast",
+          "suite": "synthesis",
+          "status": "PASS",
+          "duration_ms": 30337.849500006996,
+          "route": "FAST",
+          "models": {
+            "searcher": "ollama/qwen2.5:3b",
+            "analyst": "ollama/qwen3:1.7b",
+            "writer": "ollama/qwen3:1.7b"
+          },
+          "timings": {
+            "routing_ms": 0.40750000334810466,
+            "cache_lookup_ms": null,
+            "rag_retrieval_ms": null,
+            "web_search_ms": 0.0686999992467463,
+            "crew_ms": 28696.744300003047,
+            "total_ms": 30337.849500006996
+          },
+          "tokens": {
+            "input_tokens": 3034,
+            "output_tokens": 2937,
+            "total_tokens": 5971
+          },
+          "measured": {
+            "research_status": "SUCCESS",
+            "cache_status": "DISABLED",
+            "cache_similarity": null,
+            "cache_distance": null,
+            "rag_used": false,
+            "rag_status": "DISABLED",
+            "rag_chunks": 0,
+            "ddgs_calls": 1,
+            "web_results": 1,
+            "crew_executions": 1,
+            "total_ms": 30337.849500006996,
+            "total_tokens": 5971,
+            "answer_characters": 2373,
+            "answer_sha256": "4e13cfcf1fceb8d90bc3ddee373e0cc18a1fdec4f8d5605a351e4045aa826668",
+            "agent_statuses": [
+              "COMPLETED",
+              "COMPLETED",
+              "COMPLETED"
+            ],
+            "web_statuses": [
+              "SUCCESS"
+            ],
+            "models_verified": true,
+            "rubric": {
+              "concepts_satisfied": 6,
+              "concepts_total": 6,
+              "coverage": 1.0,
+              "concept_checks": [
+                true,
+                true,
+                true,
+                true,
+                true,
+                true
+              ],
+              "nonempty": true,
+              "no_execution_error": true,
+              "expected_source_link": true
+            },
+            "python_process_cpu_ms": 1875.0,
+            "fixed_evidence_sha256": "b1ae4613f463eded72b3f429d341dea1eab0ea6d7f8bea1e2d0db5a37503dcb3",
+            "fixed_evidence_verified": true
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "complex-quality",
+          "suite": "synthesis",
+          "status": "PASS",
+          "duration_ms": 29195.585499997833,
+          "route": "QUALITY",
+          "models": {
+            "searcher": "ollama/qwen2.5:3b",
+            "analyst": "ollama/qwen2.5:3b",
+            "writer": "ollama/qwen2.5:3b"
+          },
+          "timings": {
+            "routing_ms": 0.1387999946018681,
+            "cache_lookup_ms": null,
+            "rag_retrieval_ms": null,
+            "web_search_ms": 0.35740000021178275,
+            "crew_ms": 27290.660300001036,
+            "total_ms": 29195.585499997833
+          },
+          "tokens": {
+            "input_tokens": 3112,
+            "output_tokens": 1531,
+            "total_tokens": 4643
+          },
+          "measured": {
+            "research_status": "SUCCESS",
+            "cache_status": "DISABLED",
+            "cache_similarity": null,
+            "cache_distance": null,
+            "rag_used": false,
+            "rag_status": "DISABLED",
+            "rag_chunks": 0,
+            "ddgs_calls": 1,
+            "web_results": 1,
+            "crew_executions": 1,
+            "total_ms": 29195.585499997833,
+            "total_tokens": 4643,
+            "answer_characters": 2288,
+            "answer_sha256": "10bc5a5bb1023ec70b8da7ba44019f93ac1b734e5a14ed88ab068bfd4e34586e",
+            "agent_statuses": [
+              "COMPLETED",
+              "COMPLETED",
+              "COMPLETED"
+            ],
+            "web_statuses": [
+              "SUCCESS"
+            ],
+            "models_verified": true,
+            "rubric": {
+              "concepts_satisfied": 6,
+              "concepts_total": 6,
+              "coverage": 1.0,
+              "concept_checks": [
+                true,
+                true,
+                true,
+                true,
+                true,
+                true
+              ],
+              "nonempty": true,
+              "no_execution_error": true,
+              "expected_source_link": true
+            },
+            "python_process_cpu_ms": 2187.5,
+            "fixed_evidence_sha256": "b1ae4613f463eded72b3f429d341dea1eab0ea6d7f8bea1e2d0db5a37503dcb3",
+            "fixed_evidence_verified": true
+          },
+          "errors": [],
+          "warnings": []
+        }
+      ],
+      "metrics": {
+        "FAST": {
+          "n": 2,
+          "mean_ms": 36471.52220000862,
+          "median_ms": 36471.52220000862
+        },
+        "QUALITY": {
+          "n": 2,
+          "mean_ms": 28263.693200002308,
+          "median_ms": 28263.693200002308
+        },
+        "attempted_cases": 4,
+        "execution_errors": []
+      }
+    },
+    {
+      "name": "cache_e2e",
+      "category": "CONTROLLED",
+      "cases": [
+        {
+          "case_id": "cache-cold",
+          "suite": "cache_e2e",
+          "status": "PASS",
+          "duration_ms": 32908.52929999528,
+          "route": "FAST",
+          "models": {
+            "searcher": "ollama/qwen2.5:3b",
+            "analyst": "ollama/qwen3:1.7b",
+            "writer": "ollama/qwen3:1.7b"
+          },
+          "timings": {
+            "routing_ms": 0.3724999987753108,
+            "cache_lookup_ms": 27.885899995453656,
+            "rag_retrieval_ms": null,
+            "web_search_ms": 0.3283999831182882,
+            "crew_ms": 24999.666600007913,
+            "total_ms": 32908.52929999528
+          },
+          "tokens": {
+            "input_tokens": 4370,
+            "output_tokens": 1913,
+            "total_tokens": 6283
+          },
+          "measured": {
+            "research_status": "SUCCESS",
+            "cache_status": "EMPTY",
+            "cache_similarity": null,
+            "cache_distance": null,
+            "rag_used": false,
+            "rag_status": "DISABLED",
+            "rag_chunks": 0,
+            "ddgs_calls": 4,
+            "web_results": 4,
+            "crew_executions": 1,
+            "total_ms": 32908.52929999528,
+            "total_tokens": 6283,
+            "answer_characters": 1243,
+            "answer_sha256": "8d96d43b73e34271a38e4dc7e7d8b7ca5d25a272be4c6d32406ea78e4fd020b5",
+            "agent_statuses": [
+              "COMPLETED",
+              "COMPLETED",
+              "COMPLETED"
+            ],
+            "web_statuses": [
+              "SUCCESS",
+              "SUCCESS",
+              "SUCCESS",
+              "SUCCESS"
+            ],
+            "python_process_cpu_ms": 2187.5,
+            "fixed_evidence_sha256": "edfad1e3511e964b9456a3a6e1cc89b79e62edd1e5f2c8b2c1132784b3e85846",
+            "fixed_evidence_verified": true,
+            "answer_matches_cold": false
+          },
+          "errors": [],
+          "warnings": []
+        },
+        {
+          "case_id": "cache-hit",
+          "suite": "cache_e2e",
+          "status": "PASS",
+          "duration_ms": 32.976200003759004,
+          "route": "FAST",
+          "models": {
+            "searcher": "ollama/qwen2.5:3b",
+            "analyst": "ollama/qwen3:1.7b",
+            "writer": "ollama/qwen3:1.7b"
+          },
+          "timings": {
+            "routing_ms": 0.1568000006955117,
+            "cache_lookup_ms": 32.569899994996376,
+            "rag_retrieval_ms": null,
+            "web_search_ms": null,
+            "crew_ms": null,
+            "total_ms": 32.976200003759004
+          },
+          "tokens": {
+            "input_tokens": null,
+            "output_tokens": null,
+            "total_tokens": null
+          },
+          "measured": {
+            "research_status": "SUCCESS",
+            "cache_status": "SEMANTIC_HIT",
+            "cache_similarity": 0.9878098368644714,
+            "cache_distance": 0.012190163135528564,
+            "rag_used": false,
+            "rag_status": "DISABLED",
+            "rag_chunks": 0,
+            "ddgs_calls": 0,
+            "web_results": 0,
+            "crew_executions": 0,
+            "total_ms": 32.976200003759004,
+            "total_tokens": null,
+            "answer_characters": 1243,
+            "answer_sha256": "8d96d43b73e34271a38e4dc7e7d8b7ca5d25a272be4c6d32406ea78e4fd020b5",
+            "agent_statuses": [
+              "NOT_EXECUTED",
+              "NOT_EXECUTED",
+              "NOT_EXECUTED"
+            ],
+            "web_statuses": [],
+            "python_process_cpu_ms": 15.625,
+            "answer_matches_cold": true
+          },
+          "errors": [],
+          "warnings": []
+        }
+      ],
+      "metrics": {
+        "verified_bypass": true,
+        "cold_total_ms": 32908.52929999528,
+        "hit_total_ms": 32.976200003759004,
+        "speedup": 997.9478926087296,
+        "latency_reduction": 0.9989979436728045,
+        "crew_executions_avoided": 1,
+        "ddgs_calls_avoided": 4,
+        "rag_retrievals_avoided": 0,
+        "cold_generation_tokens": 6283,
+        "attempted_cases": 2,
+        "execution_errors": []
+      }
+    },
+    {
+      "name": "rag_integration",
+      "category": "CONTROLLED",
+      "cases": [
+        {
+          "case_id": "rag-integration",
+          "suite": "rag_integration",
+          "status": "PASS",
+          "duration_ms": 42266.49609999731,
+          "route": "FAST",
+          "models": {
+            "searcher": "ollama/qwen2.5:3b",
+            "analyst": "ollama/qwen3:1.7b",
+            "writer": "ollama/qwen3:1.7b"
+          },
+          "timings": {
+            "routing_ms": 0.05050000618211925,
+            "cache_lookup_ms": null,
+            "rag_retrieval_ms": 2185.1631000026828,
+            "web_search_ms": 0.2835000050254166,
+            "crew_ms": 38470.90469999239,
+            "total_ms": 42266.49609999731
+          },
+          "tokens": {
+            "input_tokens": 5414,
+            "output_tokens": 2202,
+            "total_tokens": 7616
+          },
+          "measured": {
+            "research_status": "SUCCESS",
+            "cache_status": "DISABLED",
+            "cache_similarity": null,
+            "cache_distance": null,
+            "rag_used": true,
+            "rag_status": "USED",
+            "rag_chunks": 4,
+            "ddgs_calls": 3,
+            "web_results": 3,
+            "crew_executions": 1,
+            "total_ms": 42266.49609999731,
+            "total_tokens": 7616,
+            "answer_characters": 1110,
+            "answer_sha256": "cee7dc60405dd1f5ccbded6a37ee72ac4ef096a01630d01289c8c94072e26458",
+            "agent_statuses": [
+              "COMPLETED",
+              "COMPLETED",
+              "COMPLETED"
+            ],
+            "web_statuses": [
+              "SUCCESS",
+              "SUCCESS",
+              "SUCCESS"
+            ],
+            "python_process_cpu_ms": 2031.25,
+            "fixed_evidence_sha256": "02c71a74b182e1ce9083f4ea56d4cf9dd82cf9052632b38b0f785d068c26726f",
+            "fixed_evidence_verified": true,
+            "integration_checks": {
+              "rag_used": true,
+              "expected_source_retrieved": true,
+              "fact_in_evidence": true,
+              "fact_in_answer": true,
+              "local_citation": true
+            }
+          },
+          "errors": [],
+          "warnings": []
+        }
+      ],
+      "metrics": {
+        "attempted_cases": 1,
+        "execution_errors": []
+      }
+    },
+    {
+      "name": "live_web",
+      "category": "LIVE-WEB",
+      "cases": [
+        {
+          "case_id": "live-web-mcp",
+          "suite": "live_web",
+          "status": "PASS",
+          "duration_ms": 44614.215900001,
+          "route": "FAST",
+          "models": {
+            "searcher": "ollama/qwen2.5:3b",
+            "analyst": "ollama/qwen3:1.7b",
+            "writer": "ollama/qwen3:1.7b"
+          },
+          "timings": {
+            "routing_ms": 0.9476999985054135,
+            "cache_lookup_ms": null,
+            "rag_retrieval_ms": null,
+            "web_search_ms": 6015.897399993264,
+            "crew_ms": 42850.64730000158,
+            "total_ms": 44614.215900001
+          },
+          "tokens": {
+            "input_tokens": 2815,
+            "output_tokens": 2466,
+            "total_tokens": 5281
+          },
+          "measured": {
+            "research_status": "SUCCESS",
+            "cache_status": "DISABLED",
+            "cache_similarity": null,
+            "cache_distance": null,
+            "rag_used": false,
+            "rag_status": "DISABLED",
+            "rag_chunks": 0,
+            "ddgs_calls": 1,
+            "web_results": 5,
+            "crew_executions": 1,
+            "total_ms": 44614.215900001,
+            "total_tokens": 5281,
+            "answer_characters": 1497,
+            "answer_sha256": "b904827bd363969d22e962a217ab525e74001e798332ec676ce8c7ecf09a627d",
+            "agent_statuses": [
+              "COMPLETED",
+              "COMPLETED",
+              "COMPLETED"
+            ],
+            "web_statuses": [
+              "SUCCESS"
+            ],
+            "python_process_cpu_ms": 2906.25,
+            "real_ddgs_calls": 1,
+            "blocked_ddgs_calls": 0
+          },
+          "errors": [],
+          "warnings": []
+        }
+      ],
+      "metrics": {
+        "attempted_cases": 1,
+        "execution_errors": []
+      }
+    }
+  ]
+}

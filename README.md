@@ -141,7 +141,36 @@ README.md         Setup and authoritative architecture documentation
 
 The base workflow follows [the reference project](https://github.com/patchy631/ai-engineering-hub/tree/main/Multi-Agent-deep-researcher-mcp-windows-linux). This implementation intentionally uses DDGS instead of LinkUp and local Qwen2.5 3B instead of the reference's Ollama DeepSeek R1 7B model. It also retains the worker-thread and stdout/event-flush handling needed for the local Windows/CrewAI MCP setup. No search API key is required.
 
-Semantic caching is implemented in Phase 6, deterministic local model routing in Phase 7, structured observability with persistent operational metrics in Phase 8, and the Research Execution Console with Analytics in Phase 9. Formal benchmarking/evaluation (Phase 10) remains future work.
+Semantic caching is implemented in Phase 6, deterministic local model routing in Phase 7, structured observability with persistent operational metrics in Phase 8, the Research Execution Console with Analytics in Phase 9, and reproducible evaluation and benchmarking in Phase 10.
+
+## Evaluation & Benchmarking (Phase 10)
+
+The `evaluation/` package measures the frozen production APIs without tuning models, prompts, router rules, cache thresholds, or retrieval settings. The versioned `phase10-v1` datasets cover 36 router queries, 20 positive/hard-negative cache pairs, six synthetic RAG documents with ten retrieval queries, and two controlled synthesis prompts.
+
+Results are separated into **OFFLINE** (policy conformance, real-embedding cache classification, real-embedding retrieval), **CONTROLLED EVIDENCE** (forced FAST/QUALITY synthesis, cache reuse, RAG integration), and **LIVE WEB** (one real DDGS research case). Controlled comparisons patch only the concrete DDGS text boundary to return identical fixed evidence. Normal pytest uses fakes and performs no real benchmark generation, embedding, or DDGS calls.
+
+With Ollama and the existing models available, run from the project directory:
+
+```powershell
+python -m evaluation.cli --help
+python -m evaluation.cli --suite offline --output validation_logs/phase10
+python -m evaluation.cli --suite controlled --output validation_logs/phase10 --resume
+python -m evaluation.cli --suite live-web --output validation_logs/phase10 --resume
+```
+
+Use a fresh output directory for a deliberately new benchmark. `--suite all` runs all categories within a maximum of eight research-call reservations and seven Crew reservations. CONTROLLED uses seven research requests and normally six Crew executions; semantic-hit preflight prevents accidental second generation on a cache miss. LIVE WEB permits one real DDGS boundary call, blocks additional tool attempts, and records external failure without retrying it. A fresh cache's initial miss is labelled `EMPTY` by the production trace.
+
+Temporary Chroma, cache, metrics, and atomic checkpoints live under the ignored output directory, never normal application storage. `--resume` retains successful, failed, and interrupted cases; it never repeats a generation automatically. An OS-released output lock prevents simultaneous runs from sharing a budget. The source/configuration hash includes the harness, fixtures, datasets, and frozen backend; resume rejects methodology changes.
+
+Generate reports from preserved measurements without making another research call:
+
+```powershell
+python -m evaluation.cli --suite all --output validation_logs/phase10 --resume --report-only --report-json evaluation/results/phase10_baseline.json --report-markdown docs/benchmarks/phase10_baseline.md
+```
+
+The measured baseline is in [the Markdown report](docs/benchmarks/phase10_baseline.md) and [machine-readable JSON](evaluation/results/phase10_baseline.json). Reports contain operational measurements, model identities, rubric coverage, retrieval ranks, and cache classification outcomes, without generated answers, agent outputs, embeddings, prompts, credentials, or verbose logs. The production checkpoint commit and normalized source hash identify the precommit experiment.
+
+These are small curated samples. Router scores measure policy conformance, retrieval metrics measure the synthetic corpus, and substring concept coverage is a limited content-presence rubric rather than factual correctness or human-equivalent quality. Individual synthesis timings and N/mean/median are reported without tiny-sample p95 claims. Model warmth, order, stochastic generation, local load, and external network conditions affect results. Python process CPU time excludes Ollama/GPU usage. Cache speedup is one observed pair, not a universal improvement or API cost saving. No tuning or portfolio claims are made from this benchmark.
 
 ## Research Execution Console (Phase 9)
 
@@ -303,7 +332,7 @@ python -m tests.semantic_cache.smoke_local
 python -m tests.semantic_cache.smoke_research
 ```
 
-Formal benchmark/evaluation (Phase 10) and analytics dashboards remain unimplemented. Phase 8 adds operational observability below. No percentage speedup or cost savings are claimed.
+Phase 10 adds the separate benchmark harness and measured baseline described above. Phase 8 adds operational observability below, and Phase 9 provides the Analytics view. Cache measurements apply only to the recorded benchmark case; no general cost savings are claimed.
 
 ## Deterministic local model routing (Phase 7)
 

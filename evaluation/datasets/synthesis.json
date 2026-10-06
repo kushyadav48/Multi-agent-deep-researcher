@@ -1,0 +1,4 @@
+[
+  {"id":"simple","classification":"SIMPLE","query":"What is the Model Context Protocol (MCP)? Give a concise explanation of what it does and how clients and servers interact.","evidence":"mcp","concept_groups":[["model context protocol"],["client"],["server"],["tools","resources","context"]]},
+  {"id":"complex","classification":"COMPLEX","query":"Compare dense retrieval with hybrid retrieval for a production RAG system. Discuss trade-offs, failure modes, and recommend when hybrid retrieval is preferable.","evidence":"hybrid","concept_groups":[["dense retrieval","vector search","semantic retrieval"],["sparse","keyword","bm25"],["hybrid","combine","combination"],["trade-off","tradeoff","latency","complexity"],["failure","miss","rare","identifier"],["recommend","prefer","when"]]}
+]

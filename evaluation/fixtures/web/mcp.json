@@ -1,0 +1,3 @@
+[
+  {"title":"MCP architecture: fixed benchmark excerpt","href":"https://modelcontextprotocol.io/docs/2026-07-28/learn/architecture","body":"Model Context Protocol connects AI applications with external context. A host creates a client for each server; a client communicates with its corresponding server. Servers offer tools, resources and prompts. Clients discover available tools and request tool execution through the protocol. This is a fixed paraphrased evidence fixture, not a live search response."}
+]
