@@ -24,13 +24,15 @@ class AppTests(unittest.TestCase):
             self.assertFalse(app.exception)
             self.assertEqual(len(app.get("file_uploader")), 1)
             self.assertTrue(app.checkbox(key="use_rag").value)
+            self.assertTrue(app.toggle(key="use_cache").value)
             self.assertIn("Stored chunks: 2", [c.value for c in app.caption])
             self.service.ingest_file.assert_not_called()
             app.checkbox(key="use_rag").uncheck().run()
+            app.toggle(key="use_cache").set_value(False).run()
             app.text_area(key="research_query").set_value("codename")
             next(b for b in app.button if b.label == "Research").click().run()
             self.assertFalse(app.exception)
-            research.assert_called_once_with("codename", use_rag=False)
+            research.assert_called_once_with("codename", use_rag=False, use_cache=False)
             self.assertIn("Answer [Document: notes.md]", [m.value for m in app.markdown])
 
     def test_explicit_ingestion_and_cleanup_on_success_and_failure(self):

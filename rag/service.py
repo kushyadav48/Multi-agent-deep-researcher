@@ -25,6 +25,10 @@ class RAGService:
         """Return stored chunks without contacting the embedding model."""
         return self.vector_store.count()
 
+    def corpus_fingerprint(self) -> str:
+        """Deterministic content identity without embedding or retrieval."""
+        return self.vector_store.corpus_fingerprint()
+
     def ingest_file(self, path: str | Path, *, source: str | None = None) -> int:
         """Upsert chunks; optional stable source supports temporary uploads."""
         document = load_document(path)

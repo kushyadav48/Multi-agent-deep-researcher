@@ -9,6 +9,7 @@ from rag.context import MAX_CONTEXT_CHARS, document_citation, format_document_co
 from rag.models import RetrievedChunk
 from rag.embeddings import EmbeddingError
 from rag.vector_store import VectorStoreError
+from semantic_cache.models import CacheLookup
 
 
 def chunk(source="protocol_notes.pdf", page=3, distance=0.2, text="Cedar-47 is the protocol codename."):
@@ -18,6 +19,10 @@ def chunk(source="protocol_notes.pdf", page=3, distance=0.2, text="Cedar-47 is t
 class ResearchRAGTests(unittest.TestCase):
     def setUp(self):
         self.service = Mock()
+        self.service.corpus_fingerprint.return_value = "test-corpus"
+        cache = patch("agents.get_default_cache_service", return_value=Mock(lookup=Mock(return_value=CacheLookup())))
+        cache.start()
+        self.addCleanup(cache.stop)
         self.service.count.return_value = 1
         self.service.retrieve.return_value = [chunk()]
         self.kickoff = patch("agents.Crew.kickoff", return_value=SimpleNamespace(raw="grounded answer"))

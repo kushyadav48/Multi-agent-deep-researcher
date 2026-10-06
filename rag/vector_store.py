@@ -1,6 +1,7 @@
 """Embedded persistent Chroma; all vectors come from the supplied provider."""
 
 import json
+from hashlib import sha256
 from pathlib import Path
 
 import chromadb
@@ -46,6 +47,17 @@ class ChromaVectorStore:
             return self._collection.count()
         except Exception as error:
             raise VectorStoreError(f"Vector-store count failed: {error}") from error
+
+    def corpus_fingerprint(self) -> str:
+        """Hash current text and citation metadata, including same-ID edits."""
+        try:
+            result = self._collection.get(include=["documents", "metadatas"])
+            rows = sorted(zip(result["ids"], result["documents"], result["metadatas"], strict=True))
+            payload = json.dumps(rows, sort_keys=True, ensure_ascii=False,
+                                 separators=(",", ":"), allow_nan=False)
+            return sha256(payload.encode("utf-8")).hexdigest()
+        except Exception as error:
+            raise VectorStoreError(f"Corpus fingerprint failed: {error}") from error
 
     def upsert(self, chunks: list[DocumentChunk], embeddings: list[list[float]]) -> None:
         if not chunks and not embeddings:

@@ -1,4 +1,5 @@
 from typing import Type
+from dataclasses import replace
 import logging
 
 from dotenv import load_dotenv
@@ -9,10 +10,12 @@ from crewai import Agent, Task, Crew, Process, LLM
 from crewai.tools import BaseTool
 
 from rag.context import (
-    DEFAULT_MAX_DISTANCE, DEFAULT_TOP_K, get_default_rag_service,
+    DEFAULT_MAX_DISTANCE, DEFAULT_TOP_K, MAX_CONTEXT_CHARS, MAX_CHUNK_CHARS, get_default_rag_service,
     retrieve_document_context,
 )
 from rag.service import RAGService
+from semantic_cache.models import CacheScope, EMBEDDING_MODEL, RESEARCH_MODEL
+from semantic_cache.service import SemanticCacheService, get_default_cache_service
 
 
 load_dotenv()
@@ -21,7 +24,7 @@ load_dotenv()
 def get_llm_client():
     """Initialize and return the LLM client."""
     return LLM(
-        model="ollama/qwen2.5:3b",
+        model=RESEARCH_MODEL,
         base_url="http://localhost:11434",
         max_tokens=2048,
     )
@@ -231,18 +234,57 @@ def create_research_crew(query: str, *, document_context: str = ""):
     return crew
 
 
+def research_cache_scope(service: RAGService | None, *, use_rag: bool,
+                         top_k: int, max_distance: float) -> CacheScope:
+    """Read corpus identity without running retrieval or requesting embeddings."""
+    fingerprint = service.corpus_fingerprint() if use_rag else 'WEB_ONLY'
+    if not isinstance(fingerprint, str) or not fingerprint:
+        raise ValueError('Corpus fingerprint must be non-empty text')
+    embedding_model = getattr(getattr(service, 'embedding_provider', None), 'model', EMBEDDING_MODEL)
+    if not isinstance(embedding_model, str):
+        embedding_model = EMBEDDING_MODEL
+    return CacheScope(use_rag=use_rag, corpus_fingerprint=fingerprint,
+                      rag_embedding_model=embedding_model,
+                      rag_top_k=top_k, rag_max_distance=max_distance,
+                      max_context_chars=MAX_CONTEXT_CHARS, max_chunk_chars=MAX_CHUNK_CHARS)
+
+
 def run_research(
     query: str, *, use_rag: bool = True, rag_service: RAGService | None = None,
     rag_top_k: int = DEFAULT_TOP_K, rag_max_distance: float = DEFAULT_MAX_DISTANCE,
+    use_cache: bool = True, cache_service: SemanticCacheService | None = None,
 ):
     """Run the research process and return results."""
 
     try:
         document_context = ""
         rag_notice = ""
+        service = None
         if use_rag:
             try:
                 service = rag_service if rag_service is not None else get_default_rag_service()
+            except Exception as error:
+                logging.getLogger(__name__).warning("Local RAG failed; using web-only research: %s", error)
+                rag_notice = "\n\nLocal knowledge base unavailable; this answer used web-only research."
+
+        cache = scope = lookup = None
+        if use_cache and not rag_notice:
+            try:
+                scope = research_cache_scope(service, use_rag=use_rag,
+                                             top_k=rag_top_k, max_distance=rag_max_distance)
+                cache = cache_service if cache_service is not None else get_default_cache_service()
+                embedding_model = getattr(cache.embedding_provider, 'model', EMBEDDING_MODEL)
+                if isinstance(embedding_model, str):
+                    scope = replace(scope, embedding_model=embedding_model)
+                lookup = cache.lookup(query, scope)
+                if lookup.hit is not None:
+                    return lookup.hit.entry.answer
+            except Exception as error:
+                logging.getLogger(__name__).warning("Semantic cache unavailable; running research: %s", error)
+                cache = None
+
+        if use_rag and not rag_notice:
+            try:
                 document_context = retrieve_document_context(
                     query, service, top_k=rag_top_k, max_distance=rag_max_distance,
                 )
@@ -254,6 +296,22 @@ def run_research(
         crew = create_research_crew(query, document_context=document_context)
 
         result = crew.kickoff()
+
+        task_outputs = getattr(result, 'tasks_output', None)
+        complete = task_outputs is None or (
+            len(task_outputs) == 3 and all(output.raw.strip() for output in task_outputs)
+        )
+        if cache is not None and not rag_notice and complete:
+            try:
+                # Do not label answers with a stale scope if ingestion occurred
+                # during the long-running research execution.
+                current_scope = research_cache_scope(service, use_rag=use_rag,
+                                                     top_k=rag_top_k, max_distance=rag_max_distance)
+                current_scope = replace(current_scope, embedding_model=scope.embedding_model)
+                if scope == current_scope:
+                    cache.save(query, result.raw, scope, embedding=lookup.embedding)
+            except Exception as error:
+                logging.getLogger(__name__).warning("Semantic cache write skipped: %s", error)
 
         return result.raw + rag_notice
 
