@@ -14,14 +14,14 @@ The project has a Streamlit interface and a separate Model Context Protocol (MCP
 Streamlit app (app.py)
       |
       v
-agents.run_research(query)
+agents.run_research_detailed(query)
       |
       v
 Deterministic complexity router (Auto / Fast / Quality)
       |
       v
 Semantic Cache
-      +-- HIT --> cached final answer
+      +-- HIT --> cached answer + bypass trace -------+
       |
       +-- MISS
             |
@@ -33,7 +33,14 @@ Semantic Cache
        Web Searcher -> Research Analyst -> Technical Writer
             |
             v
-       Final answer -> cache write
+       Final answer -> cache write                  |
+            |                                       |
+            v                                       v
+       ResearchExecutionResult <--------------------+
+       Routing / Cache / RAG / Web / Agent outputs / Timings / Final answer
+            |
+            v
+       SQLite metrics (operational metadata only)
 ```
 
 MCP is a separate interface, not an intermediate step for Streamlit:
@@ -121,6 +128,7 @@ Keep Ollama running while the client calls the research tool.
 
 ```text
 agents.py         Research agents, DDGS tool, tasks, and run_research()
+observability/    Typed execution results, request recorder, SQLite metrics
 server.py         MCP stdio interface
 app.py            Streamlit interface
 requirements.txt  Direct runtime dependencies
@@ -132,7 +140,7 @@ README.md         Setup and authoritative architecture documentation
 
 The base workflow follows [the reference project](https://github.com/patchy631/ai-engineering-hub/tree/main/Multi-Agent-deep-researcher-mcp-windows-linux). This implementation intentionally uses DDGS instead of LinkUp and local Qwen2.5 3B instead of the reference's Ollama DeepSeek R1 7B model. It also retains the worker-thread and stdout/event-flush handling needed for the local Windows/CrewAI MCP setup. No search API key is required.
 
-Semantic caching is implemented in Phase 6 and deterministic local model routing in Phase 7. Persistent metrics/observability, analytics dashboards, and formal benchmarking/evaluation remain future work.
+Semantic caching is implemented in Phase 6, deterministic local model routing in Phase 7, and structured observability with persistent operational metrics in Phase 8. The Research Execution Console (Phase 9) and formal benchmarking/evaluation (Phase 10) remain future work.
 
 ## Integrated local knowledge base (Phase 5)
 
@@ -184,7 +192,7 @@ Stable IDs and upserts prevent duplicate chunks when the unchanged file is inges
 
 Temporary uploads pass their filename through `ingest_file(path, source=filename)` so reuploading unchanged content from a new temporary directory does not duplicate it. Uploads with the same filename share source identity; changed contents can leave older chunks. A document-management/versioning UI is not implemented.
 
-Persistent metrics/observability, analytics dashboards, and formal benchmarking/evaluation are not yet implemented. No dependencies were added for Phases 5 through 7.
+Structured observability and operational metrics are described under Phase 8 below. The analytics dashboard and formal benchmarking/evaluation are not yet implemented. No dependencies were added for Phases 5 through 8.
 
 Validate without Ollama using deterministic fake embeddings and temporary Chroma directories:
 
@@ -220,7 +228,7 @@ Scope is a SHA-256 digest over canonical JSON containing cache schema/generation
 
 Only successful, nonempty final answers are stored. Exceptions, explicit error responses, incomplete Crew task outputs, and unexpected RAG fallback answers are excluded. Fingerprint, cache lookup, embedding, and cache write failures log warnings and preserve the research path. A cache failure does not turn a successful answer into an error.
 
-Streamlit's **Use semantic cache** toggle defaults to enabled and reaches canonical `run_research()`. MCP retains exactly `crew_research(query)` and uses caching through its existing call; stdio handling and shutdown are unchanged. `run_research(query)` remains valid. Disable caching entirely with `use_cache=False`, which performs no cache construction, scope work, lookup, cache embedding, or write:
+Streamlit's **Use semantic cache** toggle defaults to enabled and reaches the canonical detailed pipeline. MCP retains exactly `crew_research(query)` and uses caching through its existing string wrapper; stdio handling and shutdown are unchanged. `run_research(query)` remains valid. Disable caching entirely with `use_cache=False`, which performs no cache construction, scope work, lookup, cache embedding, or write:
 
 ```python
 from agents import run_research
@@ -270,7 +278,7 @@ python -m tests.semantic_cache.smoke_local
 python -m tests.semantic_cache.smoke_research
 ```
 
-Formal benchmark/evaluation (Phase 10), persistent metrics/observability, and analytics dashboards remain unimplemented. No percentage speedup or cost savings are claimed.
+Formal benchmark/evaluation (Phase 10) and analytics dashboards remain unimplemented. Phase 8 adds operational observability below. No percentage speedup or cost savings are claimed.
 
 ## Deterministic local model routing (Phase 7)
 
@@ -323,3 +331,70 @@ python -m tests.smoke_interfaces
 ```
 
 The routing regression disables cache and RAG, runs one simple Auto/Fast research request, observes concrete `crewai.crew.Crew.kickoff` and `ddgs.ddgs.DDGS.text`, and records actual agent assignments, all three task outputs, retrieved/cited URLs, and runtime in Git-ignored `validation_logs/`. Quality is verified through static Crew construction without kickoff. It is a smoke check, not a formal performance benchmark.
+
+## Structured execution trace and persistent metrics (Phase 8)
+
+`observability/` separates the rich **current in-memory execution trace** from the small **persistent operational history**. There is one research implementation: `run_research()` delegates to `run_research_detailed()` and returns `result.final_answer` as a string, including the existing `Error:` convention. MCP keeps exactly its existing tool and protocol. Streamlit uses the detailed API, retains the current result in `st.session_state.research_execution`, and continues displaying only the final answer with the existing upload/RAG/cache/routing controls. **Phase 9 will render the Research Execution Console; it is not implemented here.**
+
+```python
+from agents import run_research_detailed
+from observability import MetricsStore
+
+result = run_research_detailed(
+    "What is MCP?", use_rag=True, rag_service=None,
+    rag_top_k=4, rag_max_distance=0.6,
+    use_cache=True, cache_service=None, model_route="auto",
+    metrics_store=None, record_metrics=True,
+)
+print(result.final_answer)
+trace = result.to_dict()  # JSON-ready, including derived stage counters
+
+store = MetricsStore()  # same project-anchored default database
+recent = store.recent(limit=20)
+summary = store.summary()
+count = store.count()
+```
+
+`ResearchExecutionResult` contains a UUID `request_id`, query, UTC ISO start/finish timestamps, success/error status, routing/cache/RAG/web traces, three agent records, timings, nullable usage, warnings/error types, final answer, and `metrics_persisted`. The trace captures only observable outputs:
+
+- Routing reuses the exact execution decision: requested mode, selected route, SIMPLE (Fast) / COMPLEX (Quality), score, threshold, reasons, policy version, and all three model identities. Classification follows the selected route, including manual overrides.
+- Cache status is `DISABLED`, `EMPTY` (no live compatible entries, inferred from the existing lookup), `MISS`, `EXACT_HIT`, or `SEMANTIC_HIT`. `ERROR` reports cache failure; `BYPASSED` means lookup did not execute. Available hit fields include similarity, distance (`1 - similarity`), entry ID, and configured threshold. No additional lookup occurs.
+- RAG reports enabled/used, retrieved relevant chunk count, duration, and status: `DISABLED`, `EMPTY_CORPUS`, `NO_RELEVANT_RESULTS`, `USED`, `ERROR` (existing web-only fallback), `BYPASSED` (cache hit), or `NOT_EXECUTED`. Evidence contains filename, nullable page, chunk index, distance, and retrieved text. This is the relevant retrieval result; existing context limits still bound what reaches the agents. Non-paged documents keep `page=None`. No embedding or arbitrary document metadata is copied.
+- Each real DDGS tool invocation records its actual query, returned title/URL/snippet data, duration, and `SUCCESS`/`EMPTY`/`ERROR` status. Calls and result counts include repeated invocations; error calls include only the error type. The concrete request-local tool retains its own calls, including through CrewAI's adapter. There is no global last-result state, second search, production monkey-patch, or scraping of generated URLs.
+- Agent records follow the known Searcher/Analyst/Writer task order, with task/agent name, model, status, output text, and skip reason. Only public `TaskOutput.raw` is copied. Cache hits use `NOT_EXECUTED`, `output_text=None`, and `reason="semantic_cache_hit"`; RAG and DDGS are skipped. Missing task outputs are marked `UNAVAILABLE`; unexpected output counts add a warning. A failed Crew retains available completed public task outputs and marks remaining tasks as errors.
+- The Writer's returned task output remains separate from `final_answer`, which may append missing retrieved web links or the existing RAG fallback notice.
+
+Elapsed milliseconds use `time.perf_counter()`: `routing_ms`, `cache_lookup_ms` (including scope/setup), `rag_retrieval_ms`, `web_search_ms` (sum of actual DDGS calls), `crew_ms`, and `total_ms`. **None means not executed**, including Crew/RAG/web on a cache hit. Web time is included in Crew time, so stage values should not be summed to calculate total. Total covers research, setup, and cache writes, excluding metrics persistence. Agent-specific timings are not collected.
+
+The installed CrewAI public `token_usage` provides prompt/completion/total counters. Input/output/total tokens are copied only when nonnegative, internally consistent, and total is positive; absent, default-zero, or inconsistent counters remain `None`. Local inference providers may not report usage reliably. There are no invented counts or API-dollar cost calculations.
+
+Hidden chain-of-thought, private scratchpads, provider reasoning, internal prompts/messages, credentials, and raw embeddings are never collected by this subsystem. Rich outputs remain in the current execution result only. Existing semantic-cache and RAG persistence retain their preexisting content behavior; the metrics database has its own stricter content boundary.
+
+### SQLite operational history
+
+Default storage is Git-ignored **`data/metrics/research_metrics.db`**, anchored to the project root. Python's standard-library `sqlite3` uses schema version **1** (`PRAGMA user_version`), a `requests` table keyed by request ID, a timestamp index, WAL mode, a five-second busy timeout, parameterized values, and short-lived connections. No new dependency or database server is required. Unknown schema versions are rejected without overwriting them.
+
+Each success, cache hit, or failed request writes one row containing request ID, UTC timestamps, status, SHA-256 query hash and character count, requested/selected route and score, three model identities, cache status/similarity, RAG enabled/used/count, DDGS call/web-result counts, the six timing fields, nullable input/output/total tokens, and error type. SHA-256 hashes the **exact UTF-8 query**, without modifying semantic-cache normalization. Hashes identify repeated exact queries; they are deterministic digests, not encryption.
+
+An explicit column allowlist excludes raw query text, agent outputs, final answers, RAG text, web queries/snippets/URLs, prompts, credentials, and embeddings. SQLite errors never print to MCP stdout. A metrics initialization or write failure preserves the research answer, leaves `metrics_persisted=False`, and adds a warning containing only the exception type. `record_metrics=False` disables metrics construction and writes; `metrics_store=MetricsStore(custom_path)` supports isolated histories and tests.
+
+`count()` returns stored request count. `recent(limit=20)` returns operational rows newest first; limits must be positive integers. `summary()` returns total/success/failed requests, cache hits/lookups and hit rate, Fast/Quality counts, average/p50/p95 latency, requests using DDGS, total DDGS calls, and requests using RAG. Cache hit rate divides hits by successful enabled lookups (`EMPTY`, `MISS`, and both hit statuses), excluding disabled/bypassed/error lookups. Empty denominators and empty latency sets return `None`. Percentiles use linear interpolation at `(n - 1) * percentile`; latency aggregates include successful and failed requests with measured totals.
+
+History has no retention policy or full trace archive yet. Summary percentile calculation loads operational rows into Python; it is intended for lightweight local history. No charts, cloud telemetry, cost tracking, router/cache-policy changes, evaluation harness, or extra agent are added.
+
+### Validation
+
+Deterministic tests use fake Crew completions/DDGS results, fake embeddings, and temporary databases. Default metrics are isolated per test, preventing pollution of application history.
+
+```powershell
+python -m pytest -q tests/observability tests/test_research_rag.py tests/semantic_cache tests/routing tests/rag tests/test_app.py
+python -m pytest -q
+python -m pip check
+python -m tests.smoke_interfaces
+```
+
+The opt-in observability regression runs **exactly one** live research request with cache/RAG disabled and Auto routing, using a temporary metrics DB and a 20-minute child-process bound. It independently observes concrete `crewai.crew.Crew.kickoff` and `ddgs.ddgs.DDGS.text`, compares real queries/results/counts with the structured trace, checks all three public task outputs and the separate final answer, validates timings and the single operational row, and confirms raw query absence from SQLite. It never instruments `agents.LLM.call`. Selected observable evidence is checkpointed to ignored `validation_logs/phase8_research_regression.json`; verbose console rendering is discarded. Failures do not trigger another generation. Normal interface smoke initializes MCP/lists its one tool/disconnects and checks headless Streamlit HTTP; it performs no research.
+
+```powershell
+python -m tests.observability.smoke_research
+```

@@ -19,7 +19,8 @@ class AppTests(unittest.TestCase):
         self.addCleanup(default.stop)
 
     def test_controls_toggle_canonical_research_and_result_rendering(self):
-        with patch("agents.run_research", return_value="Answer [Document: notes.md]") as research:
+        result = SimpleNamespace(final_answer="Answer [Document: notes.md]")
+        with patch("agents.run_research_detailed", return_value=result) as research:
             app = AppTest.from_file(APP, default_timeout=30).run()
             self.assertFalse(app.exception)
             self.assertEqual(len(app.get("file_uploader")), 1)
@@ -36,10 +37,11 @@ class AppTests(unittest.TestCase):
             self.assertFalse(app.exception)
             research.assert_called_once_with("codename", use_rag=False, use_cache=False, model_route="auto")
             self.assertIn("Answer [Document: notes.md]", [m.value for m in app.markdown])
+            self.assertIs(app.session_state.research_execution, result)
 
     def test_manual_routes_reach_canonical_backend_without_automatic_research(self):
         for label in ("Fast", "Quality"):
-            with self.subTest(route=label), patch("agents.run_research", return_value="answer") as research:
+            with self.subTest(route=label), patch("agents.run_research_detailed", return_value=SimpleNamespace(final_answer="answer")) as research:
                 app = AppTest.from_file(APP, default_timeout=30).run()
                 app.selectbox(key="model_route").select(label).run()
                 self.assertFalse(app.exception)
@@ -82,6 +84,26 @@ class AppTests(unittest.TestCase):
         self.assertFalse(app.exception)
         self.assertTrue(app.warning)
         self.assertEqual(len(app.text_area), 1)
+
+    def test_error_and_exception_do_not_render_stale_answer(self):
+        for error in (None, RuntimeError('backend offline')):
+            with self.subTest(error=error), patch('agents.run_research_detailed',
+                    return_value=SimpleNamespace(final_answer='Error: failed'), side_effect=error):
+                app = AppTest.from_file(APP, default_timeout=30).run()
+                app.session_state.research_result = 'stale answer'
+                app.text_area(key='research_query').set_value('MCP')
+                next(b for b in app.button if b.label == 'Research').click().run()
+                self.assertFalse(app.exception)
+                self.assertTrue(app.error)
+                self.assertIsNone(app.session_state.research_result)
+
+    def test_empty_query_does_not_execute_research(self):
+        with patch('agents.run_research_detailed') as research:
+            app = AppTest.from_file(APP, default_timeout=30).run()
+            app.text_area(key='research_query').set_value('   ')
+            next(b for b in app.button if b.label == 'Research').click().run()
+            self.assertTrue(app.warning)
+            research.assert_not_called()
 
 
 if __name__ == "__main__":

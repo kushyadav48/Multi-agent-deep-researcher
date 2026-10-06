@@ -37,6 +37,7 @@ validation_logs/
 # Downloaded model files
 data/chroma/
 data/semantic_cache/
+data/metrics/
 models/
 .ollama/
 *.gguf

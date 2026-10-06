@@ -1,6 +1,7 @@
 from typing import Type
 from dataclasses import replace
 import logging
+from time import perf_counter
 
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field, PrivateAttr
@@ -18,6 +19,9 @@ from routing.models import SEARCH_MODEL, QUALITY_SYNTHESIS_MODEL, RoutingDecisio
 from routing.router import route_query
 from semantic_cache.models import CacheScope, EMBEDDING_MODEL
 from semantic_cache.service import SemanticCacheService, cacheable_answer, get_default_cache_service
+from observability.models import ResearchExecutionResult, WebSearchCall, WebSearchResult
+from observability.recorder import ExecutionRecorder
+from observability.store import MetricsStore
 
 
 load_dotenv()
@@ -55,6 +59,12 @@ class DuckDuckGoSearchTool(BaseTool):
 
     args_schema: Type[BaseModel] = DuckDuckGoSearchInput
     _retrieved_urls: list[str] = PrivateAttr(default_factory=list)
+    _search_calls: list[WebSearchCall] = PrivateAttr(default_factory=list)
+
+    @property
+    def search_calls(self) -> tuple[WebSearchCall, ...]:
+        """Actual calls owned by this tool instance, including empty/error calls."""
+        return tuple(self._search_calls)
 
     @property
     def retrieved_urls(self) -> tuple[str, ...]:
@@ -68,13 +78,24 @@ class DuckDuckGoSearchTool(BaseTool):
     ) -> str:
         """Execute DuckDuckGo search and return results."""
 
+        started = perf_counter()
+        observed = []
+        status = 'ERROR'
+        error_type = None
+        duration_ms = None
         try:
             max_results = 5 if depth == "standard" else 10
 
-            results = DDGS().text(
-                query,
-                max_results=max_results,
-            )
+            try:
+                results = DDGS().text(query, max_results=max_results)
+            finally:
+                duration_ms = (perf_counter() - started) * 1000
+
+            observed = [WebSearchResult(
+                title=result.get('title') or '', url=result.get('href') or '',
+                snippet=result.get('body') or '',
+            ) for result in results or []]
+            status = 'SUCCESS' if results else 'EMPTY'
 
             if not results:
                 return "No search results were found."
@@ -95,7 +116,14 @@ class DuckDuckGoSearchTool(BaseTool):
             return "\n".join(formatted_results)
 
         except Exception as e:
+            status = 'ERROR'
+            error_type = type(e).__name__
             return f"Error occurred while searching: {str(e)}"
+        finally:
+            self._search_calls.append(WebSearchCall(
+                query, observed, duration_ms if duration_ms is not None else (perf_counter() - started) * 1000,
+                status, error_type,
+            ))
 
 
 def create_research_crew(query: str, *, document_context: str = "",
@@ -290,11 +318,35 @@ def run_research(
     rag_top_k: int = DEFAULT_TOP_K, rag_max_distance: float = DEFAULT_MAX_DISTANCE,
     use_cache: bool = True, cache_service: SemanticCacheService | None = None,
     model_route: RoutingMode | str = RoutingMode.AUTO,
-):
-    """Run the research process and return results."""
+) -> str:
+    """Backward-compatible string API over the single detailed pipeline."""
+    return run_research_detailed(
+        query, use_rag=use_rag, rag_service=rag_service,
+        rag_top_k=rag_top_k, rag_max_distance=rag_max_distance,
+        use_cache=use_cache, cache_service=cache_service, model_route=model_route,
+    ).final_answer
+
+
+def run_research_detailed(
+    query: str, *, use_rag: bool = True, rag_service: RAGService | None = None,
+    rag_top_k: int = DEFAULT_TOP_K, rag_max_distance: float = DEFAULT_MAX_DISTANCE,
+    use_cache: bool = True, cache_service: SemanticCacheService | None = None,
+    model_route: RoutingMode | str = RoutingMode.AUTO,
+    metrics_store: MetricsStore | None = None, record_metrics: bool = True,
+) -> ResearchExecutionResult:
+    """Run once, capturing returned outputs and persisting operational metrics.
+
+    The existing Error: string behavior is preserved in final_answer. Skipped
+    stage timings/output text are None. Full content lives only in this result.
+    """
+    recorder = ExecutionRecorder(query, use_rag=use_rag, use_cache=use_cache, model_route=model_route)
+    execution = recorder.result
+    crew = None
 
     try:
-        decision = route_query(query, model_route)
+        with recorder.measure('routing_ms'):
+            decision = route_query(query, model_route)
+            recorder.routing(decision)
         document_context = ""
         rag_notice = ""
         service = None
@@ -304,38 +356,68 @@ def run_research(
             except Exception as error:
                 logging.getLogger(__name__).warning("Local RAG failed; using web-only research: %s", error)
                 rag_notice = "\n\nLocal knowledge base unavailable; this answer used web-only research."
+                execution.rag.status = 'ERROR'
+                execution.rag.reason = type(error).__name__
+                execution.warnings.append('Local RAG unavailable; using web-only research.')
 
         cache = scope = lookup = None
         if use_cache and not rag_notice:
             try:
-                scope = research_cache_scope(service, use_rag=use_rag,
-                                             top_k=rag_top_k, max_distance=rag_max_distance,
-                                             routing_decision=decision)
-                cache = cache_service if cache_service is not None else get_default_cache_service()
-                embedding_model = getattr(cache.embedding_provider, 'model', EMBEDDING_MODEL)
-                if isinstance(embedding_model, str):
-                    scope = replace(scope, embedding_model=embedding_model)
-                lookup = cache.lookup(query, scope)
+                with recorder.measure('cache_lookup_ms'):
+                    scope = research_cache_scope(service, use_rag=use_rag,
+                                                 top_k=rag_top_k, max_distance=rag_max_distance,
+                                                 routing_decision=decision)
+                    cache = cache_service if cache_service is not None else get_default_cache_service()
+                    threshold = getattr(cache, 'similarity_threshold', None)
+                    if isinstance(threshold, (int, float)):
+                        execution.cache.threshold = threshold
+                    embedding_model = getattr(cache.embedding_provider, 'model', EMBEDDING_MODEL)
+                    if isinstance(embedding_model, str):
+                        scope = replace(scope, embedding_model=embedding_model)
+                    lookup = cache.lookup(query, scope)
+                execution.cache.status = 'EMPTY' if lookup.embedding is None else 'MISS'
                 if lookup.hit is not None:
-                    return lookup.hit.entry.answer
+                    hit = lookup.hit
+                    execution.cache.status = 'EXACT_HIT' if hit.kind == 'exact' else 'SEMANTIC_HIT'
+                    execution.cache.similarity = hit.similarity
+                    execution.cache.distance = 1 - hit.similarity
+                    execution.cache.entry_id = hit.entry.id
+                    execution.final_answer = hit.entry.answer
+                    recorder.cache_hit()
+                    return execution
             except Exception as error:
                 logging.getLogger(__name__).warning("Semantic cache unavailable; running research: %s", error)
+                execution.cache.status = 'ERROR'
+                execution.cache.reason = type(error).__name__
+                execution.warnings.append('Semantic cache unavailable; running research.')
                 cache = None
+        elif use_cache:
+            execution.cache.reason = 'rag_unavailable'
 
         if use_rag and not rag_notice:
             try:
-                document_context = retrieve_document_context(
-                    query, service, top_k=rag_top_k, max_distance=rag_max_distance,
-                )
+                with recorder.measure('rag_retrieval_ms'):
+                    document_context = retrieve_document_context(
+                        query, service, top_k=rag_top_k, max_distance=rag_max_distance,
+                        observer=recorder.rag,
+                    )
             except Exception as error:
                 # Explicit application policy: keep web research available and
                 # expose the failure in both stderr logs and the returned answer.
                 logging.getLogger(__name__).warning("Local RAG failed; using web-only research: %s", error)
                 rag_notice = "\n\nLocal knowledge base unavailable; this answer used web-only research."
+                execution.rag.status = 'ERROR'
+                execution.rag.reason = type(error).__name__
+                execution.warnings.append('Local RAG retrieval failed; using web-only research.')
         crew = create_research_crew(query, document_context=document_context,
                                     synthesis_model=decision.synthesis_model)
 
-        result = crew.kickoff()
+        for agent in execution.agents:
+            agent.status = 'UNAVAILABLE'
+            agent.reason = 'crew_started'
+        with recorder.measure('crew_ms'):
+            result = crew.kickoff()
+        recorder.crew_outputs(result)
         answer = _with_search_sources(result.raw, crew)
 
         task_outputs = getattr(result, 'tasks_output', None)
@@ -354,8 +436,31 @@ def run_research(
                     cache.save(query, answer, scope, embedding=lookup.embedding)
             except Exception as error:
                 logging.getLogger(__name__).warning("Semantic cache write skipped: %s", error)
+                execution.warnings.append(f'Semantic cache write skipped ({type(error).__name__}).')
 
-        return answer + rag_notice
+        execution.final_answer = answer + rag_notice
+        if not cacheable_answer(answer):
+            execution.status = 'ERROR'
+            execution.error_type = 'EmptyResearchResponse' if not answer.strip() else 'ResearchResponseError'
+            execution.errors.append(execution.error_type)
 
     except Exception as e:
-        return f"Error: {str(e)}"
+        execution.final_answer = f"Error: {str(e)}"
+        execution.status = 'ERROR'
+        execution.error_type = type(e).__name__
+        execution.errors.append(type(e).__name__)
+        if isinstance(crew, Crew):
+            # Preserve publicly completed task outputs if a later task failed.
+            from types import SimpleNamespace
+            recorder.crew_outputs(SimpleNamespace(tasks_output=[task.output for task in crew.tasks]))
+        for agent in execution.agents:
+            if agent.reason == 'crew_started' or agent.status == 'UNAVAILABLE':
+                agent.status = 'ERROR'
+                agent.reason = 'crew_failed'
+    finally:
+        if isinstance(crew, Crew):
+            for tool in crew.agents[0].tools:
+                if isinstance(tool, DuckDuckGoSearchTool):
+                    recorder.web_calls(tool.search_calls)
+        recorder.finish(metrics_store, record_metrics=record_metrics)
+    return execution

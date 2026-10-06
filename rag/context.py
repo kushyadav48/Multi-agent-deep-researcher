@@ -3,6 +3,7 @@
 from functools import lru_cache
 from math import isfinite
 from pathlib import Path
+from typing import Callable
 
 from rag.models import RetrievedChunk
 from rag.service import RAGService
@@ -56,15 +57,21 @@ def format_document_context(chunks: list[RetrievedChunk]) -> str:
 def retrieve_document_context(
     query: str, service: RAGService, *, top_k: int = DEFAULT_TOP_K,
     max_distance: float = DEFAULT_MAX_DISTANCE,
+    observer: Callable[[str, list[RetrievedChunk]], None] | None = None,
 ) -> str:
     validate_top_k(top_k)
     if isinstance(max_distance, bool) or not isfinite(max_distance) or not 0 <= max_distance <= 2:
         raise ValueError("max_distance must be finite and between 0 and 2 (cosine distance)")
     if service.count() == 0:
+        if observer is not None:
+            observer('EMPTY_CORPUS', [])
         return ""
     chunks = service.retrieve(query, top_k=top_k)[:top_k]
     relevant = [chunk for chunk in chunks if (
         chunk.distance is not None and isfinite(chunk.distance)
         and chunk.distance <= max_distance
     )]
-    return format_document_context(relevant)
+    context = format_document_context(relevant)
+    if observer is not None:
+        observer('USED' if context else 'NO_RELEVANT_RESULTS', relevant if context else [])
+    return context

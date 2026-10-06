@@ -4,7 +4,7 @@ import streamlit as st
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from agents import run_research
+from agents import run_research_detailed
 from rag.context import get_default_rag_service, source_name
 
 
@@ -72,6 +72,8 @@ def main():
 
     if "research_result" not in st.session_state:
         st.session_state.research_result = None
+    if "research_execution" not in st.session_state:
+        st.session_state.research_execution = None
 
     with st.form("research_form"):
         query = st.text_area(
@@ -88,14 +90,17 @@ def main():
             st.warning("Please enter a research question before starting.")
         else:
             st.session_state.research_result = None
+            st.session_state.research_execution = None
             error_message = (
                 "Research could not be completed. Check that Ollama is running "
                 "and your internet connection is available, then try again."
             )
             try:
                 with st.spinner("Researching with multiple agents..."):
-                    result = run_research(query, use_rag=use_rag, use_cache=use_cache,
-                                          model_route=model_route.lower())
+                    execution = run_research_detailed(query, use_rag=use_rag, use_cache=use_cache,
+                                                      model_route=model_route.lower())
+                st.session_state.research_execution = execution
+                result = execution.final_answer
                 # The canonical backend can also return errors as strings.
                 if result.startswith("Error:"):
                     st.error(error_message)
