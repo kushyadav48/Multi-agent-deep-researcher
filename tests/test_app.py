@@ -25,6 +25,8 @@ class AppTests(unittest.TestCase):
             self.assertEqual(len(app.get("file_uploader")), 1)
             self.assertTrue(app.checkbox(key="use_rag").value)
             self.assertTrue(app.toggle(key="use_cache").value)
+            self.assertEqual(app.selectbox(key="model_route").value, "Auto")
+            self.assertEqual(app.selectbox(key="model_route").options, ["Auto", "Fast", "Quality"])
             self.assertIn("Stored chunks: 2", [c.value for c in app.caption])
             self.service.ingest_file.assert_not_called()
             app.checkbox(key="use_rag").uncheck().run()
@@ -32,8 +34,21 @@ class AppTests(unittest.TestCase):
             app.text_area(key="research_query").set_value("codename")
             next(b for b in app.button if b.label == "Research").click().run()
             self.assertFalse(app.exception)
-            research.assert_called_once_with("codename", use_rag=False, use_cache=False)
+            research.assert_called_once_with("codename", use_rag=False, use_cache=False, model_route="auto")
             self.assertIn("Answer [Document: notes.md]", [m.value for m in app.markdown])
+
+    def test_manual_routes_reach_canonical_backend_without_automatic_research(self):
+        for label in ("Fast", "Quality"):
+            with self.subTest(route=label), patch("agents.run_research", return_value="answer") as research:
+                app = AppTest.from_file(APP, default_timeout=30).run()
+                app.selectbox(key="model_route").select(label).run()
+                self.assertFalse(app.exception)
+                research.assert_not_called()
+                app.text_area(key="research_query").set_value("What is MCP?")
+                next(b for b in app.button if b.label == "Research").click().run()
+                self.assertFalse(app.exception)
+                research.assert_called_once_with("What is MCP?", use_rag=True, use_cache=True,
+                                                 model_route=label.lower())
 
     def test_explicit_ingestion_and_cleanup_on_success_and_failure(self):
         upload = SimpleNamespace(name="notes.md", getvalue=lambda: b"protocol notes")

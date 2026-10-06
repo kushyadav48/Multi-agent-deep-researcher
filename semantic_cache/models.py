@@ -6,10 +6,10 @@ import json
 from typing import Literal
 
 from rag.embeddings import validate_embeddings
+from routing.models import FAST_SYNTHESIS_MODEL, SEARCH_MODEL, ROUTER_POLICY_VERSION, ModelRoute
 
 
-CACHE_VERSION = '1'  # Bump when prompts, answer generation, or safety policy changes.
-RESEARCH_MODEL = 'ollama/qwen2.5:3b'
+CACHE_VERSION = '2'  # Route/model/policy-aware generation identity (Phase 7).
 EMBEDDING_MODEL = 'qwen3-embedding:0.6b'
 
 
@@ -27,7 +27,11 @@ def normalize_query(query: str) -> str:
 
 @dataclass(frozen=True)
 class CacheScope:
-    research_model: str = RESEARCH_MODEL
+    research_model: str = FAST_SYNTHESIS_MODEL
+    router_policy_version: str = ROUTER_POLICY_VERSION
+    selected_route: str = ModelRoute.FAST.value
+    search_model: str = SEARCH_MODEL
+    synthesis_model: str = FAST_SYNTHESIS_MODEL
     version: str = CACHE_VERSION
     embedding_model: str = EMBEDDING_MODEL
     rag_embedding_model: str = EMBEDDING_MODEL

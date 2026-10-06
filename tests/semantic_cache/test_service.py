@@ -72,7 +72,7 @@ def test_scope_invalidation(cache):
     scope = CacheScope(use_rag=True, corpus_fingerprint='corpus-a')
     cache.save(QUERY, 'answer', scope)
     for other in (
-        replace(scope, research_model='other'), replace(scope, version='2'),
+        replace(scope, research_model='other'), replace(scope, version='1'),
         replace(scope, use_rag=False), replace(scope, corpus_fingerprint='corpus-b'),
         replace(scope, rag_top_k=1), replace(scope, rag_max_distance=.2),
         replace(scope, embedding_model='other-embedding'),

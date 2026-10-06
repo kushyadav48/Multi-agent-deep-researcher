@@ -61,6 +61,14 @@ def main():
     st.caption("Local model inference may take some time.")
     use_rag = knowledge_base_controls()
     use_cache = st.sidebar.toggle("Use semantic cache", value=True, key="use_cache")
+    model_route = st.sidebar.selectbox(
+        "Model route", ["Auto", "Fast", "Quality"], index=0, key="model_route",
+    )
+    st.sidebar.caption(
+        "Auto selects by request complexity. Fast uses a smaller local synthesis "
+        "model; Quality uses a stronger local synthesis model. "
+        "The Web Searcher always uses qwen2.5:3b."
+    )
 
     if "research_result" not in st.session_state:
         st.session_state.research_result = None
@@ -86,7 +94,8 @@ def main():
             )
             try:
                 with st.spinner("Researching with multiple agents..."):
-                    result = run_research(query, use_rag=use_rag, use_cache=use_cache)
+                    result = run_research(query, use_rag=use_rag, use_cache=use_cache,
+                                          model_route=model_route.lower())
                 # The canonical backend can also return errors as strings.
                 if result.startswith("Error:"):
                     st.error(error_message)

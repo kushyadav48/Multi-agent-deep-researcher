@@ -17,6 +17,9 @@ Streamlit app (app.py)
 agents.run_research(query)
       |
       v
+Deterministic complexity router (Auto / Fast / Quality)
+      |
+      v
 Semantic Cache
       +-- HIT --> cached final answer
       |
@@ -53,7 +56,7 @@ The MCP server runs research in an AnyIO worker thread and serializes calls beca
 
 - Python 3.11 (validated with 3.11.9)
 - CrewAI for agent orchestration and Ollama-compatible model calls
-- Ollama running Qwen2.5 3B (`ollama/qwen2.5:3b`)
+- Ollama: fixed Qwen2.5 3B search; Qwen3 1.7B or Qwen2.5 3B synthesis
 - DDGS / DuckDuckGo for web research
 - MCP Python SDK's FastMCP for the stdio server
 - Streamlit for the UI
@@ -74,10 +77,11 @@ python -m pip install -r requirements.txt
 
 If PowerShell blocks activation, use `.\.venv\Scripts\python.exe` in place of `python` in the commands below.
 
-Install [Ollama](https://ollama.com/download/windows), start it, and pull the model:
+Install [Ollama](https://ollama.com/download/windows), start it, and pull the generation models:
 
 ```powershell
 ollama pull qwen2.5:3b
+ollama pull qwen3:1.7b
 ```
 
 The backend expects Ollama at `http://localhost:11434`. If it is not already running, start `ollama serve` in another terminal. Internet access is needed for web search. No API keys or environment variables are required for this DDGS + local Ollama setup; no `.env` or `.env.example` is needed. `python-dotenv` remains because `agents.py` uses it to load an optional local environment file.
@@ -128,7 +132,7 @@ README.md         Setup and authoritative architecture documentation
 
 The base workflow follows [the reference project](https://github.com/patchy631/ai-engineering-hub/tree/main/Multi-Agent-deep-researcher-mcp-windows-linux). This implementation intentionally uses DDGS instead of LinkUp and local Qwen2.5 3B instead of the reference's Ollama DeepSeek R1 7B model. It also retains the worker-thread and stdout/event-flush handling needed for the local Windows/CrewAI MCP setup. No search API key is required.
 
-Semantic caching is implemented in Phase 6. Model routing, persistent metrics/observability, analytics dashboards, and formal benchmarking/evaluation remain future work.
+Semantic caching is implemented in Phase 6 and deterministic local model routing in Phase 7. Persistent metrics/observability, analytics dashboards, and formal benchmarking/evaluation remain future work.
 
 ## Integrated local knowledge base (Phase 5)
 
@@ -180,7 +184,7 @@ Stable IDs and upserts prevent duplicate chunks when the unchanged file is inges
 
 Temporary uploads pass their filename through `ingest_file(path, source=filename)` so reuploading unchanged content from a new temporary directory does not duplicate it. Uploads with the same filename share source identity; changed contents can leave older chunks. A document-management/versioning UI is not implemented.
 
-Model routing, persistent metrics/observability, analytics dashboards, and formal benchmarking/evaluation are not yet implemented. No dependencies were added for Phase 5 or Phase 6.
+Persistent metrics/observability, analytics dashboards, and formal benchmarking/evaluation are not yet implemented. No dependencies were added for Phases 5 through 7.
 
 Validate without Ollama using deterministic fake embeddings and temporary Chroma directories:
 
@@ -212,7 +216,7 @@ Lookup first checks a deterministic exact-query ID. Normalization strips surroun
 
 The configurable default TTL is **3600 seconds (one hour)** because answers use live web sources. Expired records cannot hit. Lowering a service's TTL also limits older entries using their original creation timestamp. Expired records remain on disk; automatic pruning and storage caps are not implemented. An empty or incompatible cache skips query embedding and similarity search. Storing its first answer requires an embedding and may load the local embedding model. On a semantic miss, the lookup vector is reused for insertion. Repeated exact-query/scope writes upsert the same SHA-256 ID.
 
-Scope is a SHA-256 digest over canonical JSON containing cache schema/generation version, research model identity, cache embedding model identity, and RAG mode. RAG scopes additionally include corpus fingerprint, RAG embedding model identity, top-k, maximum retrieval distance, and context/chunk character limits. Web-only mode uses a distinct `WEB_ONLY` namespace. Empty RAG corpora use a deterministic digest of an empty record list. Corpus fingerprints hash sorted stored chunk IDs, actual text, and source/page/chunk metadata, so content edits invalidate cached answers even when IDs/counts stay unchanged. The corpus is checked again before writing a RAG answer; detected changes during research skip that write. Fingerprinting reads the whole corpus and does not add document replacement/versioning or an ingestion transaction. Bump `CACHE_VERSION` when prompts, generation behavior, or safety policy change.
+Scope is a SHA-256 digest over canonical JSON containing cache schema/generation version, router policy version, selected route, fixed search model, synthesis model identity, cache embedding model identity, and RAG mode. RAG scopes additionally include corpus fingerprint, RAG embedding model identity, top-k, maximum retrieval distance, and context/chunk character limits. Web-only mode uses a distinct `WEB_ONLY` namespace. Empty RAG corpora use a deterministic digest of an empty record list. Corpus fingerprints hash sorted stored chunk IDs, actual text, and source/page/chunk metadata, so content edits invalidate cached answers even when IDs/counts stay unchanged. The corpus is checked again before writing a RAG answer; detected changes during research skip that write. Fingerprinting reads the whole corpus and does not add document replacement/versioning or an ingestion transaction. Bump `CACHE_VERSION` when prompts, generation behavior, or safety policy change.
 
 Only successful, nonempty final answers are stored. Exceptions, explicit error responses, incomplete Crew task outputs, and unexpected RAG fallback answers are excluded. Fingerprint, cache lookup, embedding, and cache write failures log warnings and preserve the research path. A cache failure does not turn a successful answer into an error.
 
@@ -266,4 +270,56 @@ python -m tests.semantic_cache.smoke_local
 python -m tests.semantic_cache.smoke_research
 ```
 
-Formal benchmark/evaluation, model routing, persistent metrics/observability, and analytics dashboards remain unimplemented. No percentage speedup or cost savings are claimed.
+Formal benchmark/evaluation (Phase 10), persistent metrics/observability, and analytics dashboards remain unimplemented. No percentage speedup or cost savings are claimed.
+
+## Deterministic local model routing (Phase 7)
+
+`run_research(query)` defaults to `model_route="auto"`. Routing in `routing/` uses only Python string/regex rules: **zero LLM calls and zero embedding calls**. It selects once, before semantic-cache scope and lookup, so cache hits still bypass document retrieval, Crew construction/kickoff, DDGS, and generation.
+
+| Selected route | Web Searcher (fixed) | Research Analyst | Technical Writer |
+| --- | --- | --- | --- |
+| Fast | `ollama/qwen2.5:3b` | `ollama/qwen3:1.7b` | `ollama/qwen3:1.7b` |
+| Quality | `ollama/qwen2.5:3b` | `ollama/qwen2.5:3b` | `ollama/qwen2.5:3b` |
+
+Exactly three agents, sequential task order, DDGS tool access, citation instructions, 2,048-token generation limits, and all RAG settings/evidence remain the same. Embeddings remain `qwen3-embedding:0.6b`. Only the Analyst/Writer model is selected. Streamlit's **Model route** control defaults to **Auto**; **Fast** forces the smaller synthesis model and **Quality** forces the stronger synthesis model. MCP keeps its existing `crew_research(query)` API and uses Auto.
+
+Policy **v1** adds these scores, with each category counted at most once:
+
+| Complexity signal | Score |
+| --- | ---: |
+| At least 30 whitespace-delimited words | +1 |
+| At least 80 words | +1 additional |
+| Comparison | +2 |
+| Trade-offs or pros/cons | +2 |
+| Evaluation, critique, risk analysis, contradictions, or evidence quality | +3 |
+| Recommendation or architecture/system design | +3 |
+| Multiple sources/documents | +1 |
+| At least two action words joined by “and”, comma, semicolon, or newline | +1 |
+
+Auto chooses **Quality at score >= 3**, otherwise **Fast**. “What is MCP?”, “Explain RAG.”, and “Summarize MCP in three bullets.” use Fast. “Critique this proposal.” and a request to compare MCP/REST, analyze security trade-offs, and recommend enterprise architecture use Quality. `RoutingDecision` records the requested mode, selected route, models, score, deterministic reasons, and policy version. This small lexical heuristic can misread unusual wording or non-English requests; manual overrides are available.
+
+```python
+from agents import run_research
+from routing import route_query
+
+decision = route_query("What is MCP?")  # Fast; no inference
+answer = run_research("Explain RAG.", model_route="fast")
+answer = run_research("Summarize MCP.", model_route="quality")
+```
+
+Cache generation version is **2**. Route, search/synthesis models, and router policy participate in scope alongside the existing corpus/retrieval identity. Fast and Quality cannot cross-hit. Auto and a manual override selecting the same route can reuse the same compatible answer; requested mode, score, and reasons are not part of scope. Phase 6 records naturally miss without deleting databases or old entries. TTL remains 3600 seconds, and semantic similarity must remain **strictly > 0.97**. The selected decision is reused when rechecking scope before writing.
+
+There is no runtime quality judge, automatic Fast-to-Quality escalation, or second generation pass. No Python dependency changes or measured speedup claims are introduced.
+
+If synthesis omits retrieved web links, the backend appends a concise **Sources retrieved** list using only exact URLs captured by that request's DDGS tool. Existing links are not duplicated, error/empty answers are not expanded, and no additional search or generation occurs. This preserves access to the evidence; it does not verify every generated claim or replace inline attribution. The returned answer, including these links, is what the semantic cache stores.
+
+Offline validation and the explicitly invoked, bounded single-request regression:
+
+```powershell
+python -m pytest -q tests/routing tests/test_research_rag.py tests/semantic_cache tests/test_app.py
+python -m pytest -q
+python -m tests.routing.smoke_research
+python -m tests.smoke_interfaces
+```
+
+The routing regression disables cache and RAG, runs one simple Auto/Fast research request, observes concrete `crewai.crew.Crew.kickoff` and `ddgs.ddgs.DDGS.text`, and records actual agent assignments, all three task outputs, retrieved/cited URLs, and runtime in Git-ignored `validation_logs/`. Quality is verified through static Crew construction without kickoff. It is a smoke check, not a formal performance benchmark.

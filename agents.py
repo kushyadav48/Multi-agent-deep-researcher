@@ -3,7 +3,7 @@ from dataclasses import replace
 import logging
 
 from dotenv import load_dotenv
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PrivateAttr
 from ddgs import DDGS
 
 from crewai import Agent, Task, Crew, Process, LLM
@@ -14,17 +14,19 @@ from rag.context import (
     retrieve_document_context,
 )
 from rag.service import RAGService
-from semantic_cache.models import CacheScope, EMBEDDING_MODEL, RESEARCH_MODEL
-from semantic_cache.service import SemanticCacheService, get_default_cache_service
+from routing.models import SEARCH_MODEL, QUALITY_SYNTHESIS_MODEL, RoutingDecision, RoutingMode
+from routing.router import route_query
+from semantic_cache.models import CacheScope, EMBEDDING_MODEL
+from semantic_cache.service import SemanticCacheService, cacheable_answer, get_default_cache_service
 
 
 load_dotenv()
 
 
-def get_llm_client():
+def get_llm_client(model: str = SEARCH_MODEL):
     """Initialize and return the LLM client."""
     return LLM(
-        model=RESEARCH_MODEL,
+        model=model,
         base_url="http://localhost:11434",
         max_tokens=2048,
     )
@@ -52,6 +54,12 @@ class DuckDuckGoSearchTool(BaseTool):
     )
 
     args_schema: Type[BaseModel] = DuckDuckGoSearchInput
+    _retrieved_urls: list[str] = PrivateAttr(default_factory=list)
+
+    @property
+    def retrieved_urls(self) -> tuple[str, ...]:
+        """Exact URLs observed by this request's concrete DDGS execution."""
+        return tuple(self._retrieved_urls)
 
     def _run(
         self,
@@ -74,6 +82,10 @@ class DuckDuckGoSearchTool(BaseTool):
             formatted_results = []
 
             for result in results:
+                url = result.get('href')
+                if (isinstance(url, str) and url.startswith(('https://', 'http://'))
+                        and url not in self._retrieved_urls):
+                    self._retrieved_urls.append(url)
                 formatted_results.append(
                     f"Title: {result.get('title', '')}\n"
                     f"URL: {result.get('href', '')}\n"
@@ -86,12 +98,14 @@ class DuckDuckGoSearchTool(BaseTool):
             return f"Error occurred while searching: {str(e)}"
 
 
-def create_research_crew(query: str, *, document_context: str = ""):
+def create_research_crew(query: str, *, document_context: str = "",
+                         synthesis_model: str = QUALITY_SYNTHESIS_MODEL):
     """Create and configure the research crew with all agents and tasks."""
 
     search_tool = DuckDuckGoSearchTool()
 
-    client = get_llm_client()
+    search_client = get_llm_client(SEARCH_MODEL)
+    synthesis_client = get_llm_client(synthesis_model)
 
     web_searcher = Agent(
         role="Web Searcher",
@@ -106,7 +120,7 @@ def create_research_crew(query: str, *, document_context: str = ""):
         verbose=True,
         allow_delegation=False,
         tools=[search_tool],
-        llm=client,
+        llm=search_client,
     )
 
     research_analyst = Agent(
@@ -121,7 +135,7 @@ def create_research_crew(query: str, *, document_context: str = ""):
         ),
         verbose=True,
         allow_delegation=False,
-        llm=client,
+        llm=synthesis_client,
     )
 
     technical_writer = Agent(
@@ -136,7 +150,7 @@ def create_research_crew(query: str, *, document_context: str = ""):
         ),
         verbose=True,
         allow_delegation=False,
-        llm=client,
+        llm=synthesis_client,
     )
 
     search_task = Task(
@@ -234,8 +248,22 @@ def create_research_crew(query: str, *, document_context: str = ""):
     return crew
 
 
+def _with_search_sources(answer: str, crew: Crew) -> str:
+    """Keep retrieved links when synthesis omits them; no new search or inference."""
+    if not isinstance(crew, Crew) or not cacheable_answer(answer):
+        return answer
+    urls = []
+    for tool in crew.agents[0].tools:
+        if isinstance(tool, DuckDuckGoSearchTool):
+            urls.extend(url for url in tool.retrieved_urls if url not in urls and url not in answer)
+    if urls:
+        return answer + '\n\nSources retrieved:\n' + '\n'.join(f'- <{url}>' for url in urls)
+    return answer
+
+
 def research_cache_scope(service: RAGService | None, *, use_rag: bool,
-                         top_k: int, max_distance: float) -> CacheScope:
+                         top_k: int, max_distance: float,
+                         routing_decision: RoutingDecision | None = None) -> CacheScope:
     """Read corpus identity without running retrieval or requesting embeddings."""
     fingerprint = service.corpus_fingerprint() if use_rag else 'WEB_ONLY'
     if not isinstance(fingerprint, str) or not fingerprint:
@@ -243,7 +271,15 @@ def research_cache_scope(service: RAGService | None, *, use_rag: bool,
     embedding_model = getattr(getattr(service, 'embedding_provider', None), 'model', EMBEDDING_MODEL)
     if not isinstance(embedding_model, str):
         embedding_model = EMBEDDING_MODEL
+    route_state = {} if routing_decision is None else dict(
+        research_model=routing_decision.synthesis_model,
+        router_policy_version=routing_decision.policy_version,
+        selected_route=routing_decision.selected_route.value,
+        search_model=routing_decision.search_model,
+        synthesis_model=routing_decision.synthesis_model,
+    )
     return CacheScope(use_rag=use_rag, corpus_fingerprint=fingerprint,
+                      **route_state,
                       rag_embedding_model=embedding_model,
                       rag_top_k=top_k, rag_max_distance=max_distance,
                       max_context_chars=MAX_CONTEXT_CHARS, max_chunk_chars=MAX_CHUNK_CHARS)
@@ -253,10 +289,12 @@ def run_research(
     query: str, *, use_rag: bool = True, rag_service: RAGService | None = None,
     rag_top_k: int = DEFAULT_TOP_K, rag_max_distance: float = DEFAULT_MAX_DISTANCE,
     use_cache: bool = True, cache_service: SemanticCacheService | None = None,
+    model_route: RoutingMode | str = RoutingMode.AUTO,
 ):
     """Run the research process and return results."""
 
     try:
+        decision = route_query(query, model_route)
         document_context = ""
         rag_notice = ""
         service = None
@@ -271,7 +309,8 @@ def run_research(
         if use_cache and not rag_notice:
             try:
                 scope = research_cache_scope(service, use_rag=use_rag,
-                                             top_k=rag_top_k, max_distance=rag_max_distance)
+                                             top_k=rag_top_k, max_distance=rag_max_distance,
+                                             routing_decision=decision)
                 cache = cache_service if cache_service is not None else get_default_cache_service()
                 embedding_model = getattr(cache.embedding_provider, 'model', EMBEDDING_MODEL)
                 if isinstance(embedding_model, str):
@@ -293,9 +332,11 @@ def run_research(
                 # expose the failure in both stderr logs and the returned answer.
                 logging.getLogger(__name__).warning("Local RAG failed; using web-only research: %s", error)
                 rag_notice = "\n\nLocal knowledge base unavailable; this answer used web-only research."
-        crew = create_research_crew(query, document_context=document_context)
+        crew = create_research_crew(query, document_context=document_context,
+                                    synthesis_model=decision.synthesis_model)
 
         result = crew.kickoff()
+        answer = _with_search_sources(result.raw, crew)
 
         task_outputs = getattr(result, 'tasks_output', None)
         complete = task_outputs is None or (
@@ -306,14 +347,15 @@ def run_research(
                 # Do not label answers with a stale scope if ingestion occurred
                 # during the long-running research execution.
                 current_scope = research_cache_scope(service, use_rag=use_rag,
-                                                     top_k=rag_top_k, max_distance=rag_max_distance)
+                                                     top_k=rag_top_k, max_distance=rag_max_distance,
+                                                     routing_decision=decision)
                 current_scope = replace(current_scope, embedding_model=scope.embedding_model)
                 if scope == current_scope:
-                    cache.save(query, result.raw, scope, embedding=lookup.embedding)
+                    cache.save(query, answer, scope, embedding=lookup.embedding)
             except Exception as error:
                 logging.getLogger(__name__).warning("Semantic cache write skipped: %s", error)
 
-        return result.raw + rag_notice
+        return answer + rag_notice
 
     except Exception as e:
         return f"Error: {str(e)}"

@@ -6,6 +6,7 @@ from semantic_cache.models import CacheScope
 from semantic_cache.service import SemanticCacheService
 from semantic_cache.store import ChromaCacheStore
 from tests.rag.helpers import FakeEmbeddingProvider
+from routing.models import FAST_SYNTHESIS_MODEL
 
 
 def make_cache(tmp_path):
@@ -44,7 +45,7 @@ def test_miss_runs_pipeline_and_stores(tmp_path):
     with patch('agents.create_research_crew', return_value=crew) as factory:
         assert agents.run_research('protocol', rag_service=rag, cache_service=cache) == 'answer'
     crew.kickoff.assert_called_once()
-    factory.assert_called_once_with('protocol', document_context='')
+    factory.assert_called_once_with('protocol', document_context='', synthesis_model=FAST_SYNTHESIS_MODEL)
     rag.count.assert_called_once()
     assert cache.store.count() == 1
 
