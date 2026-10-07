@@ -8,6 +8,7 @@ from agents import run_research_detailed
 from rag.context import get_default_rag_service, source_name
 from ui.analytics import render_analytics
 from ui.research_console import render_research_console
+from ui.progress import ResearchProgress
 
 
 def knowledge_base_controls():
@@ -97,16 +98,18 @@ def main():
                 st.session_state.research_result = None
                 st.session_state.research_execution = None
                 st.session_state.research_error = None
+                progress = ResearchProgress()
                 try:
-                    with st.spinner("Running multi-agent research..."):
-                        execution = run_research_detailed(
-                            query, use_rag=use_rag, use_cache=use_cache,
-                            model_route=model_route.lower(),
-                        )
+                    execution = progress.run(run_research_detailed,
+                        query, use_rag=use_rag, use_cache=use_cache,
+                        model_route=model_route.lower(),
+                    )
+                    progress.finish(execution.status == 'SUCCESS')
                     st.session_state.research_execution = execution
                     if execution.status == "SUCCESS":
                         st.session_state.research_result = execution.final_answer
                 except Exception:
+                    progress.finish(False)
                     st.session_state.research_error = (
                         "Research could not be completed. Check that Ollama is running "
                         "and your internet connection is available, then try again."
