@@ -31,6 +31,15 @@ flowchart TD
     H --> T
     F --> T
     T --> M[(SQLite operational metrics)]
+    R -.-> E[Transient stage events]
+    C -.-> E
+    L -.-> E
+    S -.-> E
+    A -.-> E
+    W -.-> E
+    F -.-> E
+    H -.-> E
+    E -.-> UI[Streamlit live progress panel]
 ```
 
 Solid arrows show execution or result flow; dotted arrows show storage/model dependencies and observation. Semantic cache lookup/save also use Ollama embeddings when needed. The recorder captures decisions, RAG evidence, actual web calls, public task outputs, timings, and reported tokens.
@@ -83,6 +92,14 @@ Routing, cache, RAG, web, Crew, and total timings use `perf_counter`. `None` mea
 Analytics covers all operational rows, with the latest 20 displayed separately. Cache hit rate divides hits by eligible `EMPTY`, `MISS`, `EXACT_HIT`, and `SEMANTIC_HIT` lookups. Latency aggregates include successes and failures with measured totals; P50/P95 use linear interpolation. There is no retention policy or full trace archive.
 
 ## Streamlit interface
+
+`run_research_detailed(..., progress_callback: Callable[[ExecutionProgressEvent], None] | None = None)` remains the single pipeline. `observability/progress.py` defines stages `ROUTING`, `CACHE`, `RAG`, `WEB_SEARCH`, `WEB_SEARCHER`, `ANALYST`, `WRITER`, `FINALIZING`, and `COMPLETE`, with `STARTED`, `COMPLETED`, `SKIPPED`, and `ERROR` statuses. Events carry the request ID, UTC timestamp, safe message, optional measured duration, and allowlisted scalar metadata. They are transient and are not written to SQLite. The final execution result and metrics remain authoritative.
+
+Routing/cache/RAG events reuse actual decisions and retrieval evidence. DDGS emits at the real tool invocation boundary, including each separate call and fallback failure, without another search. CrewAI 1.15.21's public `Task.callback` marks Searcher completion/Analyst start, Analyst completion/Writer start, and Writer completion. Existing task callbacks (including async callbacks) and Crew callbacks are preserved without duplicate invocation; no thought callbacks, stdout scraping, or private Crew state are used. Finalization includes source preservation, eligible cache writes, result assembly, and metrics persistence. Fatal errors emit the reliably known active stage and an overall failure; fallback errors can precede successful completion.
+
+Cache hits emit explicit skipped events for RAG, web search, and all agents. Disabled RAG is skipped. An uninvoked DDGS tool is marked skipped after Crew completion. Missing public task outputs are marked unavailable rather than invented. There are no per-agent timing estimates. If the progress sink raises, its exception type becomes one safe result warning, the sink is disabled, and research continues with the same external error/answer semantics. No event prints to stdout. Callers without a callback and the MCP string API retain their behavior.
+
+`ui/progress.py` creates a native `st.status` panel with text placeholders immediately on form submission. It invokes the canonical backend once in a worker and uses a thread-safe queue to render events on the Streamlit script thread, including events from CrewAI's batched tool workers. No worker touches Streamlit or session state; the emitter serializes concurrent sink access. State symbols plus text show pending/running/completed/skipped/error states; failed searches remain visible if another invocation succeeds. The final answer is rendered only after the pipeline returns and queued events are drained. This is stage/event streaming, not token streaming; prompts, embeddings, provider messages, hidden reasoning, and partial Writer text never enter events. The panel lasts for that script run, while the existing rich result remains in session state across navigation and reruns.
 
 `app.py` handles the form, route/cache/RAG controls, explicit upload ingestion, and session state. `ui/` separates research rendering, analytics, and pure formatting. Only research form submission executes the pipeline; navigation/refresh reruns do not generate another answer. The latest rich trace remains in that session until replaced or the session ends. Analytics reads SQLite operational history independently.
 

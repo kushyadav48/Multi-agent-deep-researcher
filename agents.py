@@ -21,6 +21,7 @@ from semantic_cache.models import CacheScope, EMBEDDING_MODEL
 from semantic_cache.service import SemanticCacheService, cacheable_answer, get_default_cache_service
 from observability.models import ResearchExecutionResult, WebSearchCall, WebSearchResult
 from observability.recorder import ExecutionRecorder
+from observability.progress import ExecutionStage as Stage, StageStatus, ProgressCallback, ProgressEmitter
 from observability.store import MetricsStore
 
 
@@ -60,6 +61,11 @@ class DuckDuckGoSearchTool(BaseTool):
     args_schema: Type[BaseModel] = DuckDuckGoSearchInput
     _retrieved_urls: list[str] = PrivateAttr(default_factory=list)
     _search_calls: list[WebSearchCall] = PrivateAttr(default_factory=list)
+    _progress: ProgressEmitter | None = PrivateAttr(default=None)
+
+    def observe_progress(self, emitter: ProgressEmitter) -> None:
+        """Attach the request's optional sink without changing tool inputs."""
+        self._progress = emitter
 
     @property
     def search_calls(self) -> tuple[WebSearchCall, ...]:
@@ -83,6 +89,10 @@ class DuckDuckGoSearchTool(BaseTool):
         status = 'ERROR'
         error_type = None
         duration_ms = None
+        if self._progress is not None:
+            self._progress.web_invoked = True
+            self._progress.emit(Stage.WEB_SEARCH, StageStatus.STARTED, 'running...',
+                                metadata={'query': query})
         try:
             max_results = 5 if depth == "standard" else 10
 
@@ -120,10 +130,18 @@ class DuckDuckGoSearchTool(BaseTool):
             error_type = type(e).__name__
             return f"Error occurred while searching: {str(e)}"
         finally:
-            self._search_calls.append(WebSearchCall(
+            call = WebSearchCall(
                 query, observed, duration_ms if duration_ms is not None else (perf_counter() - started) * 1000,
                 status, error_type,
-            ))
+            )
+            self._search_calls.append(call)
+            if self._progress is not None:
+                self._progress.emit(
+                    Stage.WEB_SEARCH, StageStatus.ERROR if status == 'ERROR' else StageStatus.COMPLETED,
+                    'search failed; continuing with available evidence' if status == 'ERROR'
+                    else f'{len(observed)} results', elapsed_ms=call.duration_ms,
+                    metadata={'query': query, 'result_count': len(observed), 'error_type': error_type},
+                )
 
 
 def create_research_crew(query: str, *, document_context: str = "",
@@ -333,20 +351,29 @@ def run_research_detailed(
     use_cache: bool = True, cache_service: SemanticCacheService | None = None,
     model_route: RoutingMode | str = RoutingMode.AUTO,
     metrics_store: MetricsStore | None = None, record_metrics: bool = True,
+    progress_callback: ProgressCallback | None = None,
 ) -> ResearchExecutionResult:
     """Run once, capturing returned outputs and persisting operational metrics.
 
     The existing Error: string behavior is preserved in final_answer. Skipped
     stage timings/output text are None. Full content lives only in this result.
+    Optional progress events expose stage boundaries, never model reasoning.
     """
     recorder = ExecutionRecorder(query, use_rag=use_rag, use_cache=use_cache, model_route=model_route)
     execution = recorder.result
+    progress = ProgressEmitter(execution, progress_callback)
     crew = None
 
     try:
+        progress.start(Stage.ROUTING)
         with recorder.measure('routing_ms'):
             decision = route_query(query, model_route)
             recorder.routing(decision)
+        progress.emit(Stage.ROUTING, StageStatus.COMPLETED, decision.selected_route.value.upper(),
+                      elapsed_ms=execution.timings.routing_ms, metadata={
+                          'route': execution.routing.selected_route, 'complexity': execution.routing.complexity,
+                          'score': execution.routing.score, 'threshold': execution.routing.threshold,
+                      })
         document_context = ""
         rag_notice = ""
         service = None
@@ -360,6 +387,7 @@ def run_research_detailed(
                 execution.rag.reason = type(error).__name__
                 execution.warnings.append('Local RAG unavailable; using web-only research.')
 
+        progress.start(Stage.CACHE)
         cache = scope = lookup = None
         if use_cache and not rag_notice:
             try:
@@ -384,6 +412,13 @@ def run_research_detailed(
                     execution.cache.entry_id = hit.entry.id
                     execution.final_answer = hit.entry.answer
                     recorder.cache_hit()
+                    progress.emit(Stage.CACHE, StageStatus.COMPLETED,
+                                  execution.cache.status.replace('_', ' '),
+                                  elapsed_ms=execution.timings.cache_lookup_ms,
+                                  metadata={'cache_status': execution.cache.status})
+                    for stage in (Stage.RAG, Stage.WEB_SEARCH, Stage.WEB_SEARCHER, Stage.ANALYST, Stage.WRITER):
+                        progress.emit(stage, StageStatus.SKIPPED, 'skipped (cache hit)')
+                    progress.finalizing()
                     return execution
             except Exception as error:
                 logging.getLogger(__name__).warning("Semantic cache unavailable; running research: %s", error)
@@ -394,7 +429,14 @@ def run_research_detailed(
         elif use_cache:
             execution.cache.reason = 'rag_unavailable'
 
+        progress.emit(Stage.CACHE,
+                      StageStatus.ERROR if execution.cache.status == 'ERROR' else StageStatus.COMPLETED,
+                      execution.cache.status.replace('_', ' '),
+                      elapsed_ms=execution.timings.cache_lookup_ms,
+                      metadata={'cache_status': execution.cache.status})
+
         if use_rag and not rag_notice:
+            progress.start(Stage.RAG)
             try:
                 with recorder.measure('rag_retrieval_ms'):
                     document_context = retrieve_document_context(
@@ -409,8 +451,25 @@ def run_research_detailed(
                 execution.rag.status = 'ERROR'
                 execution.rag.reason = type(error).__name__
                 execution.warnings.append('Local RAG retrieval failed; using web-only research.')
+            progress.emit(Stage.RAG,
+                          StageStatus.ERROR if execution.rag.status == 'ERROR' else StageStatus.COMPLETED,
+                          'retrieval failed; using web-only research' if execution.rag.status == 'ERROR'
+                          else f'{execution.rag.chunk_count} chunks retrieved ({execution.rag.status})',
+                          elapsed_ms=execution.rag.duration_ms,
+                          metadata={'chunk_count': execution.rag.chunk_count,
+                                    'retrieval_status': execution.rag.status})
+        elif not use_rag:
+            progress.emit(Stage.RAG, StageStatus.SKIPPED, 'skipped (disabled)')
+        else:
+            progress.error(Stage.RAG, execution.rag.reason, 'unavailable; using web-only research')
+        progress.start(Stage.WEB_SEARCHER)
         crew = create_research_crew(query, document_context=document_context,
                                     synthesis_model=decision.synthesis_model)
+        if isinstance(crew, Crew) and progress_callback is not None:
+            progress.attach_crew(crew)
+            for tool in crew.agents[0].tools:
+                if isinstance(tool, DuckDuckGoSearchTool):
+                    tool.observe_progress(progress)
 
         for agent in execution.agents:
             agent.status = 'UNAVAILABLE'
@@ -418,6 +477,8 @@ def run_research_detailed(
         with recorder.measure('crew_ms'):
             result = crew.kickoff()
         recorder.crew_outputs(result)
+        progress.public_outputs()
+        progress.finalizing()
         answer = _with_search_sources(result.raw, crew)
 
         task_outputs = getattr(result, 'tasks_output', None)
@@ -443,12 +504,14 @@ def run_research_detailed(
             execution.status = 'ERROR'
             execution.error_type = 'EmptyResearchResponse' if not answer.strip() else 'ResearchResponseError'
             execution.errors.append(execution.error_type)
+            progress.error(Stage.FINALIZING, execution.error_type, 'invalid research response')
 
     except Exception as e:
         execution.final_answer = f"Error: {str(e)}"
         execution.status = 'ERROR'
         execution.error_type = type(e).__name__
         execution.errors.append(type(e).__name__)
+        progress.error(progress.active, type(e).__name__)
         if isinstance(crew, Crew):
             # Preserve publicly completed task outputs if a later task failed.
             from types import SimpleNamespace
@@ -458,9 +521,12 @@ def run_research_detailed(
                 agent.status = 'ERROR'
                 agent.reason = 'crew_failed'
     finally:
+        if execution.status == 'SUCCESS':
+            progress.finalizing()
         if isinstance(crew, Crew):
             for tool in crew.agents[0].tools:
                 if isinstance(tool, DuckDuckGoSearchTool):
                     recorder.web_calls(tool.search_calls)
         recorder.finish(metrics_store, record_metrics=record_metrics)
+        progress.finish()
     return execution

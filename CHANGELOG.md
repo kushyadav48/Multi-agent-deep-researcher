@@ -1,5 +1,12 @@
 # Release notes
 
+## Unreleased
+
+- Real-time stage/event progress in the Streamlit Research tab, alongside the existing execution console and Analytics.
+- Typed, transient execution events and an optional safe `progress_callback` on the canonical detailed research API; MCP and the string API retain their behavior.
+- Routing/cache/RAG/DDGS boundaries, public CrewAI task-completion callbacks, explicit cache-hit/disabled skips, and finalization/error states. Callback failures warn without destroying research.
+- Deterministic backend and Streamlit AppTest coverage. No token streaming, hidden-reasoning exposure, event persistence, new dependencies, or research-policy changes; frozen Phase 10 benchmarks remain unchanged.
+
 ## v1.0.0 candidate — Multi-Agent Deep Researcher
 
 This documents the completed local project for review; it does not create a Git tag or remote release.

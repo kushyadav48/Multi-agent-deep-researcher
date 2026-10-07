@@ -49,6 +49,8 @@ See [the subsystem architecture](docs/architecture.md) for stores, Ollama models
 
 The **Research** tab shows Execution Summary, Routing Decision, Semantic Cache, RAG Evidence, Web Search Results, Web Searcher Output, Research Analyst Output, Technical Writer Output, Execution Timings, token usage, Request Details, and the Final Research Answer. Agent outputs are returned task deliverables; hidden chain-of-thought and provider messages are not exposed.
 
+**Real-time stage progress:** while research runs, a live status panel updates routing, cache, RAG, actual DDGS searches, Searcher/Analyst/Writer completion, and finalization. Cache hits explicitly skip retrieval and agents; disabled RAG is marked skipped, and fallback failures remain visible. This is stage/event streaming, not token streaming: the final answer appears after execution finishes, and hidden chain-of-thought is never exposed. The full execution console still renders after completion.
+
 The **Analytics** tab shows total requests, successes/failures, cache hit rate, FAST/QUALITY counts, RAG/DDGS usage, average/P50/P95 latency, and the latest 20 operational requests. Its summary covers all stored requests. Cache hit rate excludes disabled, bypassed, and failed lookups. The latest rich trace stays in the browser session; Analytics does not archive full answers or traces.
 
 ## Model routing

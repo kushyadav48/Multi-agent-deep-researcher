@@ -1,7 +1,7 @@
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import ANY, Mock, patch
 
 from streamlit.testing.v1 import AppTest
 from tests.ui.fixtures import execution_result
@@ -37,7 +37,9 @@ class AppTests(unittest.TestCase):
             app.text_area(key="research_query").set_value("codename")
             next(b for b in app.button if b.label == "Research").click().run()
             self.assertFalse(app.exception)
-            research.assert_called_once_with("codename", use_rag=False, use_cache=False, model_route="auto")
+            research.assert_called_once_with("codename", use_rag=False, use_cache=False, model_route="auto",
+                                             progress_callback=ANY)
+            self.assertTrue(callable(research.call_args.kwargs['progress_callback']))
             self.assertIn("Answer [Document: notes.md]", [m.value for m in app.markdown])
             self.assertIs(app.session_state.research_execution, result)
 
@@ -52,7 +54,7 @@ class AppTests(unittest.TestCase):
                 next(b for b in app.button if b.label == "Research").click().run()
                 self.assertFalse(app.exception)
                 research.assert_called_once_with("What is MCP?", use_rag=True, use_cache=True,
-                                                 model_route=label.lower())
+                                                 model_route=label.lower(), progress_callback=ANY)
 
     def test_explicit_ingestion_and_cleanup_on_success_and_failure(self):
         upload = SimpleNamespace(name="notes.md", getvalue=lambda: b"protocol notes")
